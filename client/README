@@ -1,0 +1,21 @@
+How to run the hello world tests:
+
+# cd eyeunite/client
+# autoreconf -ivf
+# ./configure
+# make
+# ./tests/hwserver &
+[1] 8998
+# ./tests/hwclient 
+[127.0.0.1:18404] sent us "hello world!"
+[127.0.0.1:18404] sent us "hello world!"
+[127.0.0.1:18404] sent us "hello world!"
+[127.0.0.1:18404] sent us "hello world!"
+[127.0.0.1:18404] sent us "hello world!"
+[127.0.0.1:18404] sent us "hello world!"
+[127.0.0.1:18404] sent us "hello world!"
+[127.0.0.1:18404] sent us "hello world!"
+[127.0.0.1:18404] sent us "hello world!"
+[127.0.0.1:18404] sent us "hello world!"
+[1]+  Done                    ./tests/hwserver
+#
