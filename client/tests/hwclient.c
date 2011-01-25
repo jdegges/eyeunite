@@ -5,7 +5,9 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "debug.h"
 #include "easyudp.h"
+
 
 int
 main (void)
