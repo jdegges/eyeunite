@@ -1,3 +1,6 @@
+#ifndef EU_EASYUDP_H
+#define EU_EASYUDP_H
+
 #include <netdb.h>
 #include <stdlib.h>
 
@@ -46,3 +49,5 @@ eu_send (struct eu_socket *sock, const void *buf, size_t len, int flags);
 ssize_t
 eu_recv (struct eu_socket *sock, void *buf, size_t len, int flags, char *node,
          char *port);
+
+#endif
