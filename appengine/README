@@ -2,6 +2,21 @@ API Description
 
 Requests can be sent with either POST or GET.
 
+# Get /u
+  => Request a new user token (or peer ID)
+  => Optional arguments:
+    'o': Port for other peers to use to connect with (default: 3938)
+  => Returns peer ID
+    Example:
+      <?xml version="1.0">
+      <eyeunite>
+        <peer>
+          <pid>peer id here</pid>
+          <ip>connecting ip</ip>
+          <port>port for other peers to use</ip>
+        </peer>
+      </eyeunite>
+
 # GET /n
   => Create and join a new lobby
   => Optional arguments:
