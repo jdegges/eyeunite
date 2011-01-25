@@ -3,3 +3,8 @@ AM_LDFLAGS = -avoid-version
 
 noinst_LTLIBRARIES = libeasyudp.la
 libeasyudp_la_SOURCES = easyudp.c
+
+noinst_LTLIBRARIES += libbootstrap.la
+libbootstrap_la_SOURCES = bootstrap.c
+libbootstrap_la_LIBADD = -lcurl -lxml2
+libbootstrap_la_CFLAGS = -I/usr/include/libxml2

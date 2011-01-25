@@ -7,3 +7,7 @@ hwclient_LDADD = $(top_srcdir)/src/libeasyudp.la
 noinst_PROGRAMS += hwserver
 hwserver_SOURCES = hwserver.c
 hwserver_LDADD = $(top_srcdir)/src/libeasyudp.la
+
+noinst_PROGRAMS += bootstrap_test
+bootstrap_test_SOURCES = bootstrap_test.c
+bootstrap_test_LDADD = $(top_srcdir)/src/libbootstrap.la
