@@ -11,3 +11,7 @@ hwserver_LDADD = $(top_srcdir)/src/libeasyudp.la
 noinst_PROGRAMS += bootstrap_test
 bootstrap_test_SOURCES = bootstrap_test.c
 bootstrap_test_LDADD = $(top_srcdir)/src/libbootstrap.la
+
+noinst_PROGRAMS += hwsource
+hwsource_SOURCES = hwsource.c
+hwsource_LDADD = $(top_srcdir)/src/libsourcenode.la
