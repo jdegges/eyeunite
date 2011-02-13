@@ -11,11 +11,11 @@ int main(void)
 {
   // Create a port
   const char* pid = "111";
-  const char* endpoint = "tcp://127.0.0.1:55555";
+  const char* endpoint = "tcp://*:55555";
   void* sock = sn_initzmq (endpoint, pid);
 
   // Loop until message is received
-  message_struct* msg = sn_rcvmsg (sock);
+  message_struct* msg = NULL;
   while (msg == NULL) {
 	msg = sn_rcvmsg(sock);
   }

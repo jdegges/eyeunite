@@ -4,7 +4,7 @@
 #include <sourcenode.h>
 
 void*
-fn_initzmq (const char* endpoint, const char* pid, const char* connect_to);
+fn_initzmq (const char* pid, const char* connect_to);
 
 int
 fn_closesocket (void* socket);
@@ -13,6 +13,6 @@ message_struct*
 fn_rcvmsg (void* socket);
 
 int
-fn_sendmsg (void* socket, const char* pid, const char* type, struct tnode* params);
+fn_sendmsg (void* socket, const char* type, struct tnode* params);
 
 #endif
