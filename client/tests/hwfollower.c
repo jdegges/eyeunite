@@ -17,7 +17,7 @@ int main(void)
   void* sock = fn_initzmq (endpoint, pid, connect_to);
 
   // Send message
-  tnode* temp_node = malloc(sizeof(tnode));
+  struct tnode* temp_node = malloc(sizeof(struct tnode));
   fn_sendmsg(sock, "111", "REQ_JOIN", temp_node);
 
   fn_closesocket(sock);

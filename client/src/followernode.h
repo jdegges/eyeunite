@@ -13,6 +13,6 @@ message_struct*
 fn_rcvmsg (void* socket);
 
 int
-fn_sendmsg (void* socket, const char* pid, const char* type, tnode* params);
+fn_sendmsg (void* socket, const char* pid, const char* type, struct tnode* params);
 
 #endif

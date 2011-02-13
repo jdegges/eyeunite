@@ -16,7 +16,7 @@
 typedef struct {
   const char* identity;
   const char type[MAX_MESSAGE_TYPE];
-  tnode node_params;
+  struct tnode node_params;
 } message_struct;
 
 void*
@@ -29,7 +29,7 @@ message_struct*
 sn_rcvmsg (void* socket);
 
 int
-sn_sendmsg (void* socket, const char* pid, const char* m_type, tnode* params);
+sn_sendmsg (void* socket, const char* pid, const char* m_type, struct tnode* params);
 
 
 

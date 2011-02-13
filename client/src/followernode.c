@@ -117,7 +117,7 @@ fn_rcvmsg (void* socket) {
 // 	void* socket -> pointer to socket sending from
 //	const char* pid -> destination identity
 int
-fn_sendmsg (void* socket, const char* pid, const char* type, tnode* params) {
+fn_sendmsg (void* socket, const char* pid, const char* type, struct tnode* params) {
   int rc = 0;
 
   // CREATE IDENTITY MESSAGE
@@ -141,11 +141,11 @@ fn_sendmsg (void* socket, const char* pid, const char* type, tnode* params) {
 		(&mtype_message, mtype, MAX_MESSAGE_TYPE, NULL, NULL);
 
   // CREATE NODE PARAMETERS
-  void *node_param = malloc(sizeof(tnode));
+  void *node_param = malloc(sizeof(struct tnode));
   assert (node_param);
-  memcpy (node_param, params, sizeof(tnode));
+  memcpy (node_param, params, sizeof(struct tnode));
   zmq_msg_t node_message;
-  rc += zmq_msg_init_data (&node_message, node_param, sizeof(tnode), NULL, NULL);
+  rc += zmq_msg_init_data (&node_message, node_param, sizeof(struct tnode), NULL, NULL);
 
   if (rc != 0) {
 	return -1;
