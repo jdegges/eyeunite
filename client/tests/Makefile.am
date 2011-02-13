@@ -15,3 +15,7 @@ bootstrap_test_LDADD = $(top_srcdir)/src/libbootstrap.la
 noinst_PROGRAMS += hwsource
 hwsource_SOURCES = hwsource.c
 hwsource_LDADD = $(top_srcdir)/src/libsourcenode.la
+
+noinst_PROGRAMS += hwfollower
+hwfollower_SOURCES = hwfollower.c
+hwfollower_LDADD = $(top_srcdir)/src/libfollowernode.la

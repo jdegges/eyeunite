@@ -12,3 +12,7 @@ libbootstrap_la_CFLAGS = -I/usr/include/libxml2
 noinst_LTLIBRARIES += libsourcenode.la
 libsourcenode_la_SOURCES = sourcenode.c
 libsourcenode_la_LIBADD = -lzmq
+
+noinst_LTLIBRARIES += libfollowernode.la
+libfollowernode_la_SOURCES = followernode.c
+libfollowernode_la_LIBADD = -lzmq
