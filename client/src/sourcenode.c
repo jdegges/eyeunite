@@ -74,7 +74,9 @@ sn_rcvmsg (void* socket) {
   assert (req_msg);
   void* id_data = zmq_msg_data (&req_id);
   size_t id_size = zmq_msg_size (&req_id);
-  memcpy (&(req_msg->identity), id_data, id_size);
+  req_msg->identity = malloc (id_size);
+  assert (req_msg->identity);
+  memcpy (req_msg->identity, id_data, id_size);
   zmq_msg_close (&req_id);
 
   void* req_data = zmq_msg_data (&req);
@@ -83,23 +85,24 @@ sn_rcvmsg (void* socket) {
   zmq_msg_close (&req);
 
   // GET DATA (IF JOIN)
-  if ( req_msg->type == REQ_JOIN ) { // XXX TODO: currently type is a string! this will never run!
+  if ( req_msg->type == REQ_JOIN ) {
 	
-	// MAKE SURE THERE'S MORE
-	rc = zmq_getsockopt (socket, ZMQ_RCVMORE, &more, &more_size);
-	assert (rc == 0 && more);
+    // MAKE SURE THERE'S MORE
+    rc = zmq_getsockopt (socket, ZMQ_RCVMORE, &more, &more_size);
+    assert (rc == 0 && more);
 
-	zmq_msg_t join;
-	rc = zmq_msg_init (&join);
-	assert (rc = 0);
-	rc = zmq_recv (socket, &join, ZMQ_NOBLOCK);
-	assert (rc == 0);
+    zmq_msg_t join;
+    rc = zmq_msg_init (&join);
+    assert (rc == 0);
+    rc = zmq_recv (socket, &join, ZMQ_NOBLOCK);
+    assert (rc == 0);
 
-	void* join_data = zmq_msg_data (&join);
-	size_t join_size = zmq_msg_size (&join);
-  // XXX TODO: check that join_size is what we expect!
-	memcpy (&(req_msg->node_params), join_data, join_size);
-	zmq_msg_close (&join);
+    void* join_data = zmq_msg_data (&join);
+    size_t join_size = zmq_msg_size (&join);
+    // XXX TODO: check that join_size is what we expect!
+    assert(join_size == sizeof(struct tnode));
+    memcpy (&(req_msg->node_params), join_data, join_size);
+    zmq_msg_close (&join);
   }
 
   // MAKE SURE THERE'S NO MORE XXX TODO FIXME: when the above if statement is fixed this should be re-enabled
@@ -117,7 +120,7 @@ sn_rcvmsg (void* socket) {
 // 	void* socket -> pointer to socket sending from
 //	const char* pid -> destination identity
 int
-sn_sendmsg (void* socket, const char* pid, const char* type, struct tnode* params) {
+sn_sendmsg (void* socket, const char* pid, message_type type, struct tnode* params) {
   int rc = 0;
 
   // CREATE IDENTITY MESSAGE
@@ -127,8 +130,8 @@ sn_sendmsg (void* socket, const char* pid, const char* type, struct tnode* param
 
   // CREATE MESSAGE TYPE
   zmq_msg_t mtype_message;
-  rc += zmq_msg_init_size (&mtype_message, strlen(type)+1);
-  memcpy (zmq_msg_data (&mtype_message), type, strlen(type)+1);
+  rc += zmq_msg_init_size (&mtype_message, sizeof(message_type));
+  memcpy (zmq_msg_data (&mtype_message), &type, sizeof(message_type));
 
   // CREATE NODE PARAMETERS
   zmq_msg_t node_message;
@@ -150,4 +153,23 @@ sn_sendmsg (void* socket, const char* pid, const char* type, struct tnode* param
 	return 0;
 }
 
-
+// USED TO CONVERT ENUM VALUE TO STRING
+char* 
+sn_mtype_to_string (message_type type) {
+  switch (type) {
+    case FOLLOW_NODE:
+      return "FOLLOW_NODE";
+    case FEED_NODE:
+      return "FEED_NODE";
+    case DROP_NODE:
+      return "DROP_NODE";
+    case REQ_MOVE:
+      return "REQ_MOVE";
+    case REQ_JOIN:
+      return "REQ_JOIN";
+    case REQ_EXIT:
+      return "REQ_EXIT";
+    default:
+      return "NO_ENUM_MATCH";
+    }
+}

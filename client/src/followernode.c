@@ -42,12 +42,12 @@ fn_rcvmsg (void* socket) {
   int64_t more;
   size_t more_size = sizeof (more);
 
-  // GET THE FIRST PART OF THE MESSAGE, SHOULD BE IDENTITY
-  zmq_msg_t cmd_id;
-  int rc = zmq_msg_init (&cmd_id);
+  // GET THE MESSAGE TYPE
+  zmq_msg_t cmd_type;
+  int rc = zmq_msg_init (&cmd_type);
   assert (rc == 0);
-  rc = zmq_recv (socket, &cmd_id, ZMQ_NOBLOCK);
-  
+  rc = zmq_recv (socket, &cmd_type, ZMQ_NOBLOCK);
+
   // IF NO MESSAGES RETURN NULL
   if (rc == -1) {
 	assert (errno == EAGAIN);
@@ -58,31 +58,17 @@ fn_rcvmsg (void* socket) {
   rc = zmq_getsockopt (socket, ZMQ_RCVMORE, &more, &more_size);
   assert (rc == 0 && more);
 
-  // GET THE MESSAGE TYPE
-  zmq_msg_t cmd_type;
-  rc = zmq_msg_init (&cmd_type);
-  assert (rc == 0);
-  rc = zmq_recv (socket, &cmd_type, ZMQ_NOBLOCK);
-  assert (rc == 0);
-
-  // MAKE SURE THERE'S MORE
-  rc = zmq_getsockopt (socket, ZMQ_RCVMORE, &more, &more_size);
-  assert (rc == 0 && more);
-
   // GET INFO ON NODE TO FOLLOW OR FEED
   zmq_msg_t cmd_info;
   rc = zmq_msg_init (&cmd_info);
-  assert (rc = 0);
+  assert (rc == 0);
   rc = zmq_recv (socket, &cmd_info, ZMQ_NOBLOCK);
   assert (rc == 0);
 
   // STORE IN A MESSAGE_STRUCT
   message_struct* cmd_msg = malloc (sizeof(message_struct));
   assert (cmd_msg);
-  void* id_data = zmq_msg_data (&cmd_id);
-  size_t id_size = zmq_msg_size (&cmd_id); // XXX TODO: check size!
-  memcpy (&(cmd_msg->identity), id_data, id_size);
-  zmq_msg_close (&cmd_id);
+  
 
   void* cmd_type_data = zmq_msg_data (&cmd_type);
   size_t cmd_type_size = zmq_msg_size (&cmd_type); // XXX TODO: check size!
@@ -108,13 +94,13 @@ fn_rcvmsg (void* socket) {
 // 	void* socket -> pointer to socket sending from
 //	const char* pid -> destination identity
 int
-fn_sendmsg (void* socket, const char* type, struct tnode* params) {
+fn_sendmsg (void* socket, message_type type, struct tnode* params) {
   int rc = 0;
 
   // CREATE MESSAGE TYPE
   zmq_msg_t mtype_message;
-  rc += zmq_msg_init_size (&mtype_message, strlen(type)+1);
-  memcpy (zmq_msg_data (&mtype_message), type, strlen(type)+1);
+  rc += zmq_msg_init_size (&mtype_message, sizeof(message_type));
+  memcpy (zmq_msg_data (&mtype_message), &type, sizeof(message_type));
 
   // CREATE NODE PARAMETERS
   zmq_msg_t node_message;

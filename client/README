@@ -19,3 +19,29 @@ How to run the hello world tests:
 [127.0.0.1:18404] sent us "hello world!"
 [1]+  Done                    ./tests/hwserver
 #
+#
+#
+#
+# ./tests/hwsource &
+[1] 9000
+# ./tests/hwfollower
+Message received
+From:     222
+Type:     REQ_JOIN
+PID:      222
+LATENCY:  1
+UPLOAD:   2
+CHILD:    3
+MAX:      4
+JOINABLE: 5
+Message received
+Type:     FOLLOW_NODE
+PID:      333
+LATENCY:  5
+UPLOAD:   4
+CHILD:    3
+MAX:      2
+JOINABLE: 1
+[1]+  Done                    ./tests/hwsource
+#
+#
