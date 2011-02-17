@@ -16,3 +16,6 @@ libsourcenode_la_LIBADD = -lzmq
 noinst_LTLIBRARIES += libfollowernode.la
 libfollowernode_la_SOURCES = followernode.c
 libfollowernode_la_LIBADD = -lzmq
+
+noinst_LTLIBRARIES += libtree.la
+libtree_la_SOURCES = tree.c
