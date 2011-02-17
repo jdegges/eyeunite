@@ -2,16 +2,22 @@
 #define EU_TREE_H
 
 
-#define EU_MAX_CHILD 10
+#include <netdb.h>
+
+
+#define EU_ADDRSTRLEN INET6_ADDRSTRLEN
+#define EU_TOKENSTRLEN 224
+#define EU_MAX_CHILD 3
 
 struct tnode{
-	//string for port and id: arguments need to be added to functions as well
-	int pid;
+
+	char pid[EU_TOKENSTRLEN];
+	char addr[EU_ADDRSTRLEN];
 	int latency;
 	int upload;
 	int child;
 	int max;
-	int joinable; // maybe used for waiting for non-responsive nodes instead of entirely dropping.
+	int joinable;
 
 	struct tnode *children[EU_MAX_CHILD];
 	struct tnode *parent;
@@ -23,28 +29,28 @@ struct tnode{
  * Returns a pointer to the tree head.
  */
 struct tnode* 
-initialize(int upload, int pid);
+initialize(int upload, char pid[], char addr[]);
 
 
 /*
  * Used to add followers to the tree.
  */
 void 
-addPeer(struct tnode *tree, int latency, int upload, int pid);
+addPeer(struct tnode *tree, int latency, int upload, char pid[], char addr[]);
 
 
 /*
  * Used for a friendly quit.
  */
 void 
-removePeer(struct tnode *tree, int pid);
+removePeer(struct tnode *tree, char pid[]);
 
 
 /*
  * Used to move a peer away from its current parent.
  */
 void 
-movePeer(struct tnode *tree, int pid);    // also return new parent
+movePeer(struct tnode *tree, char pid[]);
 
 
 /*
@@ -67,7 +73,7 @@ locateEmpty(struct tnode *tree);
  * Returns a pointer to the peer, or NULL if it doesn't exist.
  */
 struct tnode* 
-findPeer(struct tnode *tree, int pid);
+findPeer(struct tnode *tree, char pid[]);
 
 
 /*
@@ -76,6 +82,15 @@ findPeer(struct tnode *tree, int pid);
  */
 struct tnode* 
 nodealloc();
+
+
+/*
+ * Used to free a tree's memory.
+ */
+void
+freeTree(struct tnode *tree);
+
+void printTree(struct tnode *tree);
 
 
 #endif
