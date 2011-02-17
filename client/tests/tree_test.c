@@ -1,5 +1,9 @@
 #include "tree.h"
 
+#include <netdb.h>
+
+#define EU_ADDRSTRLEN INET6_ADDRSTRLEN
+#define EU_TOKENSTRLEN 224
 
 int main (void){
 
@@ -36,15 +40,15 @@ int main (void){
 
 	struct tnode* tree = initialize(100, pid1, addr1);
 
-	addpeer(tree, 20, 200, pid2, addr2);
-	addpeer(tree, 30, 300, pid3, addr3);
-	addpeer(tree, 40, 400, pid4, addr4);
-	addpeer(tree, 50, 500, pid5, addr5);
-	addpeer(tree, 50, 500, pid6, addr6);
-	addpeer(tree, 50, 500, pid7, addr7);
-	addpeer(tree, 50, 500, pid8, addr8);
-	addpeer(tree, 50, 500, pid9, addr9);
-	addpeer(tree, 50, 500, pid10, addr10);
+	addPeer(tree, 20, 200, pid2, addr2);
+	addPeer(tree, 30, 300, pid3, addr3);
+	addPeer(tree, 40, 400, pid4, addr4);
+	addPeer(tree, 50, 500, pid5, addr5);
+	addPeer(tree, 50, 500, pid6, addr6);
+	addPeer(tree, 50, 500, pid7, addr7);
+	addPeer(tree, 50, 500, pid8, addr8);
+	addPeer(tree, 50, 500, pid9, addr9);
+	addPeer(tree, 50, 500, pid10, addr10);
 
 	//printTree(tree);
 
