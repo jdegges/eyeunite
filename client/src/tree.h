@@ -2,42 +2,47 @@
 #define EU_TREE_H
 
 
-
-#define EU_MAX_CHILD 3
-
-struct tnode;
+struct tree_t;
 
 
 /*
  * Used by source to initialize the tree.
  * Returns a pointer to the tree head.
  */
-struct tnode* 
-initialize(int upload, char pid[], char addr[]);
+struct tree_t* 
+initialize(int streambw, int peerbw, char pid[], char addr[], uint16_t port);
 
 
 /*
  * Used to add followers to the tree.
  */
 void 
-addPeer(struct tnode *tree, int latency, int upload, char pid[], char addr[]);
+addPeer(struct tree_t *tree, int peerbw, char pid[], char addr[], uint16_t port);
 
 
 /*
  * Used for a friendly quit.
  */
 void 
-removePeer(struct tnode *tree, char pid[]);
+removePeer(struct tree_t *tree, char pid[]);
 
 
 /*
  * Used to move a peer away from its current parent.
  */
 void 
-movePeer(struct tnode *tree, char pid[]);
+movePeer(struct tree_t *tree, char pid[]);
 
 
-void printTree(struct tnode *tree);
+/*
+ * Used to free a tree structure
+ */
+void
+freeTree(struct tree_t *tree);
+
+
+//debug function
+void printTree(struct tree_t *tree);
 
 
 #endif
