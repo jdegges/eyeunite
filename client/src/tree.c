@@ -1,7 +1,7 @@
 #include "eyeunite.h"
 #include "tree.h"
 #include "alpha_queue.h"
-//#include "list.h"
+#include "list.h"
 #include "debug.h"
 
 #include <stdio.h>
