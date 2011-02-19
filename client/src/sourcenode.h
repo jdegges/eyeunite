@@ -1,7 +1,8 @@
 #ifndef SN_SOURCENODE_H
 #define SN_SOURCENODE_H
 
-#include <tree.h>
+#include "tree.h"
+#include "eyeunite.h"
 
 typedef enum {
   FOLLOW_NODE = 1,
@@ -15,7 +16,7 @@ typedef enum {
 typedef struct {
   const char* identity;
   message_type type;
-  struct tnode node_params;
+  struct peer_info node_params;
 } message_struct;
 
 void*
@@ -28,7 +29,7 @@ message_struct*
 sn_rcvmsg (void* socket);
 
 int
-sn_sendmsg (void* socket, const char* pid, message_type m_type, struct tnode* params);
+sn_sendmsg (void* socket, const char* pid, message_type m_type, struct peer_info* params);
 
 char* 
 sn_mtype_to_string (message_type type);

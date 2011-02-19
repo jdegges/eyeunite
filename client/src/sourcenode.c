@@ -100,7 +100,7 @@ sn_rcvmsg (void* socket) {
     void* join_data = zmq_msg_data (&join);
     size_t join_size = zmq_msg_size (&join);
     // XXX TODO: check that join_size is what we expect!
-    assert(join_size == sizeof(struct tnode));
+    assert(join_size == sizeof(struct peer_info));
     memcpy (&(req_msg->node_params), join_data, join_size);
     zmq_msg_close (&join);
   }
@@ -120,7 +120,7 @@ sn_rcvmsg (void* socket) {
 // 	void* socket -> pointer to socket sending from
 //	const char* pid -> destination identity
 int
-sn_sendmsg (void* socket, const char* pid, message_type type, struct tnode* params) {
+sn_sendmsg (void* socket, const char* pid, message_type type, struct peer_info* params) {
   int rc = 0;
 
   // CREATE IDENTITY MESSAGE
@@ -135,8 +135,8 @@ sn_sendmsg (void* socket, const char* pid, message_type type, struct tnode* para
 
   // CREATE NODE PARAMETERS
   zmq_msg_t node_message;
-  rc += zmq_msg_init_size (&node_message, sizeof(struct tnode));
-  memcpy (zmq_msg_data (&node_message), params, sizeof(struct tnode));
+  rc += zmq_msg_init_size (&node_message, sizeof(struct peer_info));
+  memcpy (zmq_msg_data (&node_message), params, sizeof(struct peer_info));
 
   if (rc != 0) {
 	return -1;

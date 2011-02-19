@@ -17,7 +17,7 @@ void
 list_remove_data (struct list *l, void *data);
 
 void
-list_remove_item (struct list *l, uint64_t i)
+list_remove_item (struct list *l, uint64_t i);
 
 uint64_t
 list_count (struct list *l);

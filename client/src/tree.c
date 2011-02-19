@@ -3,21 +3,21 @@
 #include "alpha_queue.h"
 #include "list.h"
 #include "debug.h"
+#include "sourcenode.h"
 
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdbool.h>
 #include <string.h>
 
-struct tree_t
-{
+struct tree_t{
   struct node_t *root;
   int streambw;
+  void* socket;
 };
 
 
-struct node_t
-{
+struct node_t{
   int max_c;
   struct peer_info p_info;
   struct list *children;
@@ -43,8 +43,8 @@ static struct node_t *nodealloc(void)
     return NULL;
   }
 
-  temp->parent = NULL;
 
+  temp->parent = NULL;
   if ((temp->children = list_new ()) == NULL) {
     nodefree (temp);
     print_error ("out of memory");
@@ -54,7 +54,7 @@ static struct node_t *nodealloc(void)
   return temp;
 }
 
-struct tree_t *initialize(int streambw, int peerbw, char pid[], char addr[], uint16_t port)
+struct tree_t *initialize(void* socket, int streambw, int peerbw, char pid[], char addr[], uint16_t port)
 {
   struct tree_t *tree;
 
@@ -68,6 +68,7 @@ struct tree_t *initialize(int streambw, int peerbw, char pid[], char addr[], uin
     return NULL;
   }
 
+  tree->socket = socket;
   tree->streambw = streambw;
   tree->root->p_info.peerbw = peerbw;
   tree->root->p_info.port = port;
@@ -98,7 +99,7 @@ static struct node_t *locateEmpty(struct node_t *root)
       find = temp;
     else{
       for ( i = 0; i < list_count (temp->children); i++){
-        if( alpha_queue_push(queue, (void*)list_get (temp->children, i)) == false){
+        if( alpha_queue_push(queue, list_get (temp->children, i)) == false){
           print_error( "out of memory");
           alpha_queue_free(queue);
           return NULL;
@@ -140,9 +141,10 @@ int addPeer(struct tree_t *tree, int peerbw, char pid[], char addr[], uint16_t p
   strcpy(new->p_info.pid, pid);
   strcpy(new->p_info.addr, addr);
 
-  list_add (parent->children, new);
+  list_add (parent->children, (void*)new);
 
-  // todo: SEND APPROPRIATE MESSAGES
+  sn_sendmsg ( tree->socket, parent->p_info.pid, FEED_NODE, &(new->p_info));
+  sn_sendmsg ( tree->socket, new->p_info.pid, FOLLOW_NODE, &(parent->p_info));
   return 0;
 }
 
@@ -168,7 +170,7 @@ static struct node_t *findPeer(struct node_t *root, char pid[])
       find = temp;
     else{
       for ( i = 0; i < list_count (temp->children); i++){
-        if( alpha_queue_push(queue, (void*)list_get (temp->children, i)) == false){
+        if( alpha_queue_push(queue, list_get (temp->children, i)) == false){
           print_error( "out of memory");
           alpha_queue_free(queue);
           return NULL;
@@ -220,7 +222,8 @@ int removePeer(struct tree_t *tree, char pid[])
   clearParent(remove);
   nodefree(remove);
 
-  // todo: send messages
+  sn_sendmsg( tree->socket, remove->parent->p_info.pid, DROP_NODE, &(remove->p_info));
+  // todo: maybe tell remove to stop listening for parent
   return 0;
 }
 
@@ -248,10 +251,12 @@ int movePeer(struct tree_t *tree, char pid[])
   if(( newparent == tree->root) && (tree->root->max_c == list_count( tree->root->children)))
     return -3;
 
-  list_add (newparent->children, move);
+  list_add (newparent->children, (void*)move);
 
-
-  // todo: send messages
+  sn_sendmsg ( tree->socket, newparent->p_info.pid, FEED_NODE, &(move->p_info));
+  sn_sendmsg ( tree->socket, move->p_info.pid, FOLLOW_NODE, &(newparent->p_info));
+  sn_sendmsg ( tree->socket, oldparent->p_info.pid, DROP_NODE, &(move->p_info));
+  // todo: maybe send to move to drop oldparent
 }
 
 /*
@@ -264,7 +269,7 @@ static void freeRoot(struct node_t *root)
   if( root == NULL)
     return;
   for( i = 0; i < list_count(root->children); i++){
-    freeRoot( list_get( root->children, i));
+    freeRoot( (struct node_t*)list_get( root->children, i));
   }
   free(root);
 }
@@ -295,7 +300,7 @@ void printTree(struct tree_t *tree)
 	while(( print = (struct node_t*)alpha_queue_pop(queue)) != NULL) {
 		printf("Node PID: %s\n", print->p_info.pid);
 		printf("Node IP: %s\n", print->p_info.addr);
-		printf("Node # of children: %d\n", list_count(print->children));
+		printf("Node # of children: %llu\n", list_count(print->children));
 		if(print->parent != NULL)
 			printf("Node Parent: %s\n", print->parent->p_info.pid);
 		int i;
