@@ -1,6 +1,8 @@
 #ifndef EU_TREE_H
 #define EU_TREE_H
 
+#include <stdlib.h>
+#include <stdint.h>
 
 struct tree_t;
 

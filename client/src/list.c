@@ -75,7 +75,7 @@ list_get (struct list *l, uint64_t i)
 }
 
 void
-list_remove_data (struct list *l, static void *data)
+list_remove_data (struct list *l, void *data)
 {
   uint64_t i;
 

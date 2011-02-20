@@ -143,8 +143,8 @@ int addPeer(struct tree_t *tree, int peerbw, char pid[], char addr[], uint16_t p
 
   list_add (parent->children, (void*)new);
 
-  sn_sendmsg ( tree->socket, parent->p_info.pid, FEED_NODE, &(new->p_info));
-  sn_sendmsg ( tree->socket, new->p_info.pid, FOLLOW_NODE, &(parent->p_info));
+ // sn_sendmsg ( tree->socket, parent->p_info.pid, FEED_NODE, &(new->p_info));
+ // sn_sendmsg ( tree->socket, new->p_info.pid, FOLLOW_NODE, &(parent->p_info));
   return 0;
 }
 
@@ -178,7 +178,7 @@ static struct node_t *findPeer(struct node_t *root, char pid[])
       }
     }
 
-    if(( temp = (struct node_t*)alpha_queue_pop(queue)) == NULL){
+    if(( temp = (struct node_t*)alpha_queue_pop(queue)) == NULL && find == NULL){
       fprintf(stderr, "tree: could not find peer\n");
       alpha_queue_free(queue);
       return root;
@@ -198,13 +198,14 @@ static void clearParent(struct node_t *remove)
 {
   struct node_t *parent = remove->parent;
 
-  list_remove_data (parent->children, remove);
+  list_remove_data (parent->children, (void*)remove);
 }
 
 
 int removePeer(struct tree_t *tree, char pid[])
 {
   struct node_t *remove;
+  struct node_t *child;
   int i;
 
   remove = findPeer(tree->root, pid);
@@ -214,15 +215,16 @@ int removePeer(struct tree_t *tree, char pid[])
   if(remove == tree->root)
     return 0;
 
-  for (i = 0; i < list_count (remove->children); i++) {
-    struct node_t *child = (struct node_t*)list_get (remove->children, i);
+  
+  while ( list_count (remove->children) > 0){
+    child = (struct node_t*)list_get( remove->children, 0);
     movePeer(tree, child->p_info.pid);
   }
 
   clearParent(remove);
   nodefree(remove);
 
-  sn_sendmsg( tree->socket, remove->parent->p_info.pid, DROP_NODE, &(remove->p_info));
+  //sn_sendmsg( tree->socket, remove->parent->p_info.pid, DROP_NODE, &(remove->p_info));
   // todo: maybe tell remove to stop listening for parent
   return 0;
 }
@@ -252,10 +254,11 @@ int movePeer(struct tree_t *tree, char pid[])
     return -3;
 
   list_add (newparent->children, (void*)move);
+  move->parent = newparent;
 
-  sn_sendmsg ( tree->socket, newparent->p_info.pid, FEED_NODE, &(move->p_info));
-  sn_sendmsg ( tree->socket, move->p_info.pid, FOLLOW_NODE, &(newparent->p_info));
-  sn_sendmsg ( tree->socket, oldparent->p_info.pid, DROP_NODE, &(move->p_info));
+///  sn_sendmsg ( tree->socket, newparent->p_info.pid, FEED_NODE, &(move->p_info));
+ // sn_sendmsg ( tree->socket, move->p_info.pid, FOLLOW_NODE, &(newparent->p_info));
+ // sn_sendmsg ( tree->socket, oldparent->p_info.pid, DROP_NODE, &(move->p_info));
   // todo: maybe send to move to drop oldparent
 }
 
@@ -301,6 +304,7 @@ void printTree(struct tree_t *tree)
 		printf("Node PID: %s\n", print->p_info.pid);
 		printf("Node IP: %s\n", print->p_info.addr);
 		printf("Node # of children: %llu\n", list_count(print->children));
+    printf("Node max children: %d\n", print->max_c);
 		if(print->parent != NULL)
 			printf("Node Parent: %s\n", print->parent->p_info.pid);
 		int i;
