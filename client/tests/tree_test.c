@@ -1,14 +1,10 @@
 #include "tree.h"
-
-#include <netdb.h>
-
-#define EU_ADDRSTRLEN INET6_ADDRSTRLEN
-#define EU_TOKENSTRLEN 224
+#include "eyeunite.h"
 
 int main (void){
 
 
-	char pid1[EU_TOKENSTRLEN] = "1";
+	char pid1[EU_TOKENSTRLEN] = "1\0";
 	char addr1[EU_ADDRSTRLEN] = "ip1\0";
 
 	char pid2[EU_TOKENSTRLEN] = "2\0";
@@ -38,17 +34,17 @@ int main (void){
 	char pid10[EU_TOKENSTRLEN] = "10\0";
 	char addr10[EU_ADDRSTRLEN] = "ip10\0";
 
-	struct tnode* tree = initialize(100, pid1, addr1);
+	struct tree_t* tree = initialize(NULL, 50, 100, pid1, addr1, 10);
 
-	addPeer(tree, 20, 200, pid2, addr2);
-	addPeer(tree, 30, 300, pid3, addr3);
-	addPeer(tree, 40, 400, pid4, addr4);
-	addPeer(tree, 50, 500, pid5, addr5);
-	addPeer(tree, 50, 500, pid6, addr6);
-	addPeer(tree, 50, 500, pid7, addr7);
-	addPeer(tree, 50, 500, pid8, addr8);
-	addPeer(tree, 50, 500, pid9, addr9);
-	addPeer(tree, 50, 500, pid10, addr10);
+	addPeer (tree, 200, pid2, addr2, 20);
+	addPeer (tree, 300, pid3, addr3, 30);
+	addPeer (tree, 400, pid4, addr4, 40);
+	addPeer (tree, 500, pid5, addr5, 50);
+	addPeer (tree, 500, pid6, addr6, 60);
+	addPeer (tree, 500, pid7, addr7, 70);
+	addPeer (tree, 500, pid8, addr8, 80);
+	addPeer (tree, 500, pid9, addr9, 90);
+	addPeer (tree, 500, pid10, addr10, 100);
 
 	//printTree(tree);
 
