@@ -17,13 +17,11 @@ int main(void)
   void* sock = fn_initzmq (pid, connect_to);
 
   // SEND MESSAGE
-  struct tnode* temp_node = malloc (sizeof(struct tnode));
-  temp_node->pid = 222;
-  temp_node->latency = 1;
-  temp_node->upload = 2;
-  temp_node->child = 3;
-  temp_node->max = 4;
-  temp_node->joinable = 5;
+  struct peer_info* temp_node = malloc (sizeof(struct peer_info));
+  memcpy(temp_node->pid, "222", 4);
+  memcpy(temp_node->addr, "127.0.0.1", 10);
+  temp_node->port = 444;
+  temp_node->peerbw = 44;
   fn_sendmsg(sock, REQ_JOIN, temp_node);
 
   // LOOP UNTIL MESSAGE RECEIVED
@@ -33,14 +31,13 @@ int main(void)
   }
 
   // PRINT THE MESSAGE
-  printf("Message received\n");
-  printf("Type:     %s\n", sn_mtype_to_string(msg->type));
-  printf("PID:      %i\n", msg->node_params.pid);
-  printf("LATENCY:  %i\n", msg->node_params.latency);
-  printf("UPLOAD:   %i\n", msg->node_params.upload);
-  printf("CHILD:    %i\n", msg->node_params.child);
-  printf("MAX:      %i\n", msg->node_params.max);
-  printf("JOINABLE: %i\n", msg->node_params.joinable);
+  printf("Message received from source\n");
+  printf("Type:            %s\n", sn_mtype_to_string(msg->type));
+  printf("FOLLOW PID:      %s\n", msg->node_params.pid);
+  printf("FOLLOW ADDRESS:  %s\n", msg->node_params.addr);
+  printf("FOLLOW PORT:     %i\n", msg->node_params.port);
+  printf("BW:              %i\n", msg->node_params.peerbw);
+  printf("\n\n");
 
   fn_closesocket(sock);
 }

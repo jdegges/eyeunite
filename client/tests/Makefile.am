@@ -24,3 +24,4 @@ hwfollower_LDADD += $(top_srcdir)/src/libsourcenode.la
 noinst_PROGRAMS += tree_test
 tree_test_SOURCES = tree_test.c
 tree_test_LDADD = $(top_srcdir)/src/libtree.la
+tree_test_LDADD += $(top_srcdir)/src/libsourcenode.la

@@ -14,6 +14,7 @@ struct tree_t{
   struct node_t *root;
   int streambw;
   void* socket;
+  bool debug;
 };
 
 
@@ -54,7 +55,7 @@ static struct node_t *nodealloc(void)
   return temp;
 }
 
-struct tree_t *initialize(void* socket, int streambw, int peerbw, char pid[], char addr[], uint16_t port)
+struct tree_t *initialize(void* socket, int streambw, int peerbw, char pid[], char addr[], uint16_t port, int debug_mode)
 {
   struct tree_t *tree;
 
@@ -70,6 +71,7 @@ struct tree_t *initialize(void* socket, int streambw, int peerbw, char pid[], ch
 
   tree->socket = socket;
   tree->streambw = streambw;
+  tree->debug = debug_mode;
   tree->root->p_info.peerbw = peerbw;
   tree->root->p_info.port = port;
   tree->root->max_c = peerbw / streambw;
@@ -143,8 +145,10 @@ int addPeer(struct tree_t *tree, int peerbw, char pid[], char addr[], uint16_t p
 
   list_add (parent->children, (void*)new);
 
- // sn_sendmsg ( tree->socket, parent->p_info.pid, FEED_NODE, &(new->p_info));
- // sn_sendmsg ( tree->socket, new->p_info.pid, FOLLOW_NODE, &(parent->p_info));
+  if (tree->debug == 0) {
+    sn_sendmsg ( tree->socket, parent->p_info.pid, FEED_NODE, &(new->p_info));
+    sn_sendmsg ( tree->socket, new->p_info.pid, FOLLOW_NODE, &(parent->p_info));
+  }
   return 0;
 }
 
@@ -224,7 +228,9 @@ int removePeer(struct tree_t *tree, char pid[])
   clearParent(remove);
   nodefree(remove);
 
-  //sn_sendmsg( tree->socket, remove->parent->p_info.pid, DROP_NODE, &(remove->p_info));
+  if (tree->debug == 0) {
+    sn_sendmsg( tree->socket, remove->parent->p_info.pid, DROP_NODE, &(remove->p_info));
+  }
   // todo: maybe tell remove to stop listening for parent
   return 0;
 }
@@ -256,9 +262,11 @@ int movePeer(struct tree_t *tree, char pid[])
   list_add (newparent->children, (void*)move);
   move->parent = newparent;
 
-///  sn_sendmsg ( tree->socket, newparent->p_info.pid, FEED_NODE, &(move->p_info));
- // sn_sendmsg ( tree->socket, move->p_info.pid, FOLLOW_NODE, &(newparent->p_info));
- // sn_sendmsg ( tree->socket, oldparent->p_info.pid, DROP_NODE, &(move->p_info));
+  if (tree->debug == 0) {
+    sn_sendmsg ( tree->socket, newparent->p_info.pid, FEED_NODE, &(move->p_info));
+    sn_sendmsg ( tree->socket, move->p_info.pid, FOLLOW_NODE, &(newparent->p_info));
+    sn_sendmsg ( tree->socket, oldparent->p_info.pid, DROP_NODE, &(move->p_info));
+  }
   // todo: maybe send to move to drop oldparent
 }
 

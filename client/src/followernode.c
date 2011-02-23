@@ -94,7 +94,7 @@ fn_rcvmsg (void* socket) {
 // 	void* socket -> pointer to socket sending from
 //	const char* pid -> destination identity
 int
-fn_sendmsg (void* socket, message_type type, struct tnode* params) {
+fn_sendmsg (void* socket, message_type type, struct peer_info* params) {
   int rc = 0;
 
   // CREATE MESSAGE TYPE
@@ -104,8 +104,8 @@ fn_sendmsg (void* socket, message_type type, struct tnode* params) {
 
   // CREATE NODE PARAMETERS
   zmq_msg_t node_message;
-  rc += zmq_msg_init_size (&node_message,  sizeof(struct tnode));
-  memcpy (zmq_msg_data (&node_message), params, sizeof(struct tnode));
+  rc += zmq_msg_init_size (&node_message,  sizeof(struct peer_info));
+  memcpy (zmq_msg_data (&node_message), params, sizeof(struct peer_info));
 
   if (rc != 0) {
     print_error ("");

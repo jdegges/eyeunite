@@ -34,7 +34,7 @@ int main (void){
 	char pid10[EU_TOKENSTRLEN] = "10\0";
 	char addr10[EU_ADDRSTRLEN] = "ip10\0";
 
-	struct tree_t* tree = initialize(NULL, 50, 100, pid1, addr1, 10);
+	struct tree_t* tree = initialize(NULL, 50, 100, pid1, addr1, 10, 1);
 
 	addPeer (tree, 200, pid2, addr2, 20);
 	addPeer (tree, 300, pid3, addr3, 30);
