@@ -20,7 +20,7 @@ libfollowernode_la_LIBADD = -lzmq
 noinst_LTLIBRARIES += libtree.la
 libtree_la_SOURCES = alpha_queue.c list.c tree.c 
 
-noinst_PROGRAMS = eyeunitesource
+bin_PROGRAMS = eyeunitesource
 eyeunitesource_SOURCES = eyeunitesource.c
 eyeunitesource_LDADD = $(top_srcdir)/src/libsourcenode.la
 eyeunitesource_LDADD += $(top_srcdir)/src/libtree.la

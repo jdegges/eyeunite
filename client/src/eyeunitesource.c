@@ -3,6 +3,7 @@
 
 #include "sourcenode.h"
 #include "tree.h"
+#include "debug.h"
 
 int main(void) {
 
@@ -26,13 +27,13 @@ int main(void) {
           if (prmve != 0) {
             switch (prmve) {
               case -1:
-                printf ("Memory Error in moving peer\n");
+                print_error ("Memory Error in moving peer\n");
                 break;
               case -2:
-                printf ("Peer Not Found in Tree in moving peer\n");
+                print_error ("Peer Not Found in Tree in moving peer\n");
                 break;
               case -3:
-                printf ("No Empty Slots in moving peer\n");
+                print_error ("No Empty Slots in moving peer\n");
                 break;
             }
           }
@@ -43,10 +44,10 @@ int main(void) {
           if (pradd != 0) {
               switch (pradd) {
                 case -1:
-                  printf ("Memory Error in adding peer\n");
+                  print_error ("Memory Error in adding peer\n");
                   break;
                 case -2:
-                  printf ("No Empty Slots in adding peer\n");
+                  print_error ("No Empty Slots in adding peer\n");
                   break;
               }
           }
@@ -55,7 +56,7 @@ int main(void) {
         case REQ_EXIT:
           ;int prrmv = removePeer (tree, msg->node_params.pid);
           if (prrmv == -1) {
-            printf ("Memory Error in remove peer\n");
+            print_error ("Memory Error in remove peer\n");
           }
         }
       }
