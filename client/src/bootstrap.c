@@ -3,13 +3,12 @@
 #include "bootstrap.h"
 #include "debug.h"
 #include "easyudp.h"
+#include "eyeunite.h"
 
 #include <curl/curl.h>
 #include <libxml/parser.h>
 #include <stdio.h>
 #include <string.h>
-
-#define EU_TOKENSTRLEN 224
 
 struct buffer
 {
@@ -230,13 +229,18 @@ parse_response (xmlDocPtr doc, xmlNodePtr cur, char *lobby_token,
 }
 
 struct bootstrap *
-bootstrap_init (const char *host, uint16_t port)
+bootstrap_init (char *host, uint16_t port, char *pid_token)
 {
   struct bootstrap *b = NULL;
   CURL *curl = NULL;
   CURLcode rc;
   size_t len;
   char *url = NULL;
+
+  if (NULL == pid_token) {
+    print_error ("invalid parameter: pid_token");
+    goto error;
+  }
 
   b = calloc (1, sizeof *b);
   if (NULL == b) {
@@ -322,9 +326,11 @@ bootstrap_init (const char *host, uint16_t port)
   strcpy (b->host, host);
 
   /* temporary, should be removed */
-  printf ("pid:  %s\n", b->bsp.pid);
-  printf ("addr: %s\n", b->bsp.addr);
-  printf ("port: %u\n", b->bsp.port);
+  print_error ("pid:  %s\n", b->bsp.pid);
+  print_error ("addr: %s\n", b->bsp.addr);
+  print_error ("port: %u\n", b->bsp.port);
+
+  memcpy (pid_token, b->bsp.pid, EU_TOKENSTRLEN);
 
   curl_free (url);
   b->buf.pos = 0;
@@ -355,12 +361,13 @@ bootstrap_cleanup (struct bootstrap *b)
 }
 
 int
-bootstrap_lobby_create (struct bootstrap *b)
+bootstrap_lobby_create (struct bootstrap *b, char *lobby_token)
 {
   size_t len;
   char *url;
 
-  if (NULL == b || NULL == b->curl || NULL == b->host) {
+  if (NULL == b || NULL == b->curl || NULL == b->host
+   || NULL == lobby_token) {
     print_error ("error: invalid argument");
     goto error;
   }
@@ -433,10 +440,12 @@ bootstrap_lobby_create (struct bootstrap *b)
   }
 
   /* temporary, should be removed */
-  printf ("lid:  %s\n", b->lobby_token);
-  printf ("pid:  %s\n", b->bsp.pid);
-  printf ("addr: %s\n", b->bsp.addr);
-  printf ("port: %u\n", b->bsp.port);
+  print_error ("lid:  %s\n", b->lobby_token);
+  print_error ("pid:  %s\n", b->bsp.pid);
+  print_error ("addr: %s\n", b->bsp.addr);
+  print_error ("port: %u\n", b->bsp.port);
+
+  memcpy (lobby_token, b->lobby_token, EU_TOKENSTRLEN);
 
   curl_free (url);
   b->buf.pos = 0;
@@ -448,7 +457,7 @@ error:
 }
 
 int
-bootstrap_lobby_join (struct bootstrap *b, const char *lobby_token);
+bootstrap_lobby_join (struct bootstrap *b, char *lobby_token);
 
 int
 bootstrap_lobby_list (struct bootstrap *b, struct bootstrap_peer *peers,

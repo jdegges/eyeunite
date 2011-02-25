@@ -5,7 +5,6 @@
 #include <stdlib.h>
 
 struct bootstrap;
-struct bootstrap_peer;
 
 /* bootstrap_global_init: must be called exactly once before any other
  *  bootstrap calls
@@ -20,28 +19,32 @@ void
 bootstrap_global_cleanup (void);
 
 /* bootstrap_init: initializes internal state and gets a user token from the
- *  bootstrap node at host:port
+ *  bootstrap node
  *  `host' should be the remote web server with protocol prefix.
  *         For example, http://eyeunite.appspot.com
+ *  `port' is the UDP port you will be receiving data on
+ *  `pid_token'  should point to a block of memory that is EU_TOKENSTRLEN bytes
+ *               long and it will be filled in with your peer id token.
+ *  Returns: NULL on failure
  */
 struct bootstrap *
-bootstrap_init (const char *host, uint16_t port);
+bootstrap_init (char *host, uint16_t port, char *pid_token);
 
 void
 bootstrap_cleanup (struct bootstrap *b);
 
-int
-bootstrap_lobby_create (struct bootstrap *b);
-
-int
-bootstrap_lobby_join (struct bootstrap *b, const char *lobby_token);
-
-/* bootstrap_lobby_list: get list of all peers connected to the lobby
- *  `peers' is an array of `nmemb' struct bootstrap_peer objects
+/* bootstrap_lobby_create: create a new lobby
+ *  `b' previously returned from a call to bootstrap_init()
+ *  `lobby_token' should point to a block of memory that is EU_TOKENSTRLEN bytes
+ *                long and it will be filled in with the token identifying your
+ *                new lobby
+ *  Returns: 0 on success
  */
 int
-bootstrap_lobby_list (struct bootstrap *b, struct bootstrap_peer *peers,
-                      size_t nmemb);
+bootstrap_lobby_create (struct bootstrap *b, char *lobby_token);
+
+int
+bootstrap_lobby_join (struct bootstrap *b, char *lobby_token);
 
 int
 bootstrap_lobby_leave (struct bootstrap *b);
