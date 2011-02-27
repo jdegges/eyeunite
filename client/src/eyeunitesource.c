@@ -1,11 +1,13 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <signal.h>
 
 #include "sourcenode.h"
 #include "tree.h"
 #include "debug.h"
 #include "eyeunite.h"
 #include "bootstrap.h"
+
 
 int main(void) {
 
@@ -21,7 +23,7 @@ int main(void) {
   void* sock = sn_initzmq (endpoint, pid);
 
   // Create tree -- needs bootstrap
-  struct tree_t* tree = initialize (sock, 5, 100, "111", "127.0.0.1", 55555, 0);
+  struct tree_t* tree = initialize (sock, 5, 100, pid, "127.0.0.1", 55555, 0);
 
   while (1) {
     message_struct* msg = NULL;
@@ -65,12 +67,16 @@ int main(void) {
           if (prrmv == -1) {
             print_error ("Memory Error in remove peer\n");
           }
-        }
       }
     }
+  }
 
-sn_closesocket (sock);
-freetree (tree);
+  if (bootstrap_lobby_leave (btstr)) {
+    print_error ("Error leaving lobby\n");
+  }
+  bootstrap_cleanup (btstr);
+  sn_closesocket (sock);
+  freetree (tree);
     
-return;
+  return;
 }
