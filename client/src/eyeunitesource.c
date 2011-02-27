@@ -25,6 +25,8 @@ int main(void) {
   // Create tree -- needs bootstrap
   struct tree_t* tree = initialize (sock, 5, 100, pid, "127.0.0.1", 55555, 0);
 
+  printTree (tree);
+
   while (1) {
     message_struct* msg = NULL;
     msg = sn_rcvmsg(sock);
@@ -46,6 +48,7 @@ int main(void) {
                 break;
             }
           }
+          //printTree (tree);
           break;
 
         case REQ_JOIN:
@@ -60,6 +63,7 @@ int main(void) {
                   break;
               }
           }
+          //printTree (tree);
           break;
 
         case REQ_EXIT:
@@ -67,6 +71,7 @@ int main(void) {
           if (prrmv == -1) {
             print_error ("Memory Error in remove peer\n");
           }
+          //printTree (tree);
       }
     }
   }
