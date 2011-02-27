@@ -6,6 +6,7 @@
 
 #define EU_ADDRSTRLEN INET6_ADDRSTRLEN
 #define EU_TOKENSTRLEN 224
+#define APP_ENGINE "http://eyeunite.appspot.com"
 
 struct peer_info
 {

@@ -4,12 +4,19 @@
 #include "sourcenode.h"
 #include "tree.h"
 #include "debug.h"
+#include "eyeunite.h"
+#include "bootstrap.h"
 
 int main(void) {
 
   // Create a port
   // Substitute bootsrap in here later
-  const char* pid = "111";
+  char pid[EU_TOKENSTRLEN];
+  char lt[EU_TOKENSTRLEN];
+  struct bootstrap* btstr = bootstrap_init (APP_ENGINE, 55555, pid);
+  if (bootstrap_lobby_create (btstr, lt)) {
+    print_error ("Couldn't create a lobby\n");
+  }
   const char* endpoint = "tcp://*:55555";
   void* sock = sn_initzmq (endpoint, pid);
 
