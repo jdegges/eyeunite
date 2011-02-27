@@ -27,10 +27,12 @@ bootstrap_global_cleanup (void);
  *  `port' is the UDP port you will be receiving data on
  *  `pid_token'  should point to a block of memory that is EU_TOKENSTRLEN bytes
  *               long and it will be filled in with your peer id token.
+ *  `addr' should point to a block of memory that is EU_ADDRSTRLEN bytes long
+ *         it will be filled in with the address that you are connecting from.
  *  Returns: NULL on failure
  */
 struct bootstrap *
-bootstrap_init (char *host, uint16_t port, char *pid_token);
+bootstrap_init (char *host, uint16_t port, char *pid_token, char *addr);
 
 void
 bootstrap_cleanup (struct bootstrap *b);
