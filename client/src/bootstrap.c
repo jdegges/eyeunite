@@ -470,15 +470,15 @@ bootstrap_lobby_join (struct bootstrap *b, char *lobby_token)
 
   /* construct request url */
   b->buf.pos = 0;
-  len = snprintf (b->buf.data, b->buf.len, "%s/j?l=%s&p=%s&o=%u", lobby_token,
-                  b->host, b->bsp.pid, b->bsp.port) + 1;
+  len = snprintf (b->buf.data, b->buf.len, "%s/j?l=%s&p=%s&o=%u", b->host,
+                  lobby_token, b->bsp.pid, b->bsp.port) + 1;
   if (len && expand_buffer (&b->buf, len)) {
     print_error ("expand_buffer");
     goto error;
   }
 
-  len = snprintf (b->buf.data, b->buf.len, "%s/j?l=%s&p=%s&o=%u", lobby_token,
-                  b->host, b->bsp.pid, b->bsp.port);
+  len = snprintf (b->buf.data, b->buf.len, "%s/j?l=%s&p=%s&o=%u", b->host,
+                  lobby_token, b->bsp.pid, b->bsp.port);
   if (b->buf.len <= len) {
     print_error ("absurd failure");
     goto error;
@@ -522,7 +522,7 @@ bootstrap_lobby_join (struct bootstrap *b, char *lobby_token)
       goto error;
     }
 
-    if (parse_response (doc, cur, b->lobby_token, &bsp, 1, LOBBY_CREATE)) {
+    if (parse_response (doc, cur, b->lobby_token, &bsp, 1, LOBBY_JOIN)) {
       print_error ("parse_peer");
       goto error;
     }
@@ -552,8 +552,97 @@ error:
 }
 
 int
-bootstrap_lobby_list (struct bootstrap *b, struct bootstrap_peer *peers,
-                      size_t nmemb);
+bootstrap_lobby_get_source (struct bootstrap *b, struct peer_info *pi)
+{
+  size_t len;
+  char *url;
+
+  if (NULL == b || NULL == b->curl || NULL == b->host
+   || '\0' == b->lobby_token[0]
+   || NULL == pi) {
+    print_error ("error: invalid argument");
+    goto error;
+  }
+
+  /* construct request url */
+  b->buf.pos = 0;
+  len = snprintf (b->buf.data, b->buf.len, "%s/l?l=%s", b->host,
+                  b->lobby_token) + 1;
+  if (len && expand_buffer (&b->buf, len)) {
+    print_error ("expand_buffer");
+    goto error;
+  }
+
+  len = snprintf (b->buf.data, b->buf.len, "%s/l?l=%s", b->host,
+                  b->lobby_token);
+  if (b->buf.len <= len) {
+    print_error ("absurd failure");
+    goto error;
+  }
+
+  url = curl_easy_escape (b->curl, b->buf.data, 0);
+  if (NULL == url) {
+    print_error ("curl_easy_escape");
+    goto error;
+  }
+
+  /* setup curl */
+  ce (curl_easy_setopt (b->curl, CURLOPT_URL, b->buf.data), error);
+  ce (curl_easy_setopt (b->curl, CURLOPT_WRITEFUNCTION, curl_writefunction),
+      error);
+  ce (curl_easy_setopt (b->curl, CURLOPT_WRITEDATA, &b->buf), error);
+
+  /* download response */
+  ce (curl_easy_perform (b->curl), error);
+
+  /* parse response */
+  {
+    xmlDocPtr doc;
+    xmlNodePtr cur;
+    struct bootstrap_peer bsp;
+
+    doc = xmlParseMemory (b->buf.data, b->buf.pos);
+    if (NULL == doc) {
+      print_error ("xmlParseMemory");
+      goto error;
+    }
+
+    cur = xmlDocGetRootElement (doc);
+    if (NULL == cur) {
+      print_error ("xmlDocGetRootElement");
+      goto error;
+    }
+
+    if (xmlStrcmp (cur->name, (const xmlChar *) "eyeunite")) {
+      print_error ("document of the wrong type, root node != eyeunite");
+      goto error;
+    }
+
+    if (parse_response (doc, cur, NULL, &bsp, 1, LOBBY_LIST)) {
+      print_error ("parse_peer");
+      goto error;
+    }
+
+    memcpy (pi->pid, bsp.pid, EU_TOKENSTRLEN);
+    memcpy (pi->addr, bsp.addr, EU_ADDRSTRLEN);
+    pi->port = bsp.port;
+    pi->peerbw = -1;
+  }
+
+  /* temporary, should be removed */
+  print_error ("lid:  %s\n", b->lobby_token);
+  print_error ("pid:  %s\n", b->bsp.pid);
+  print_error ("addr: %s\n", b->bsp.addr);
+  print_error ("port: %u\n", b->bsp.port);
+
+  curl_free (url);
+  b->buf.pos = 0;
+
+  return 0;
+
+error:
+  return -1;
+}
 
 int
 bootstrap_lobby_leave (struct bootstrap *b);

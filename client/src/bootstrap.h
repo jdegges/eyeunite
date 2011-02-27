@@ -1,6 +1,8 @@
 #ifndef EU_BOOTSTRAP_H
 #define EU_BOOTSTRAP_H
 
+#include "eyeunite.h"
+
 #include <stdint.h>
 #include <stdlib.h>
 
@@ -47,6 +49,9 @@ int
 bootstrap_lobby_join (struct bootstrap *b, char *lobby_token);
 
 int
+bootstrap_lobby_get_source (struct bootstrap *b, struct peer_info *pi);
+
+ int
 bootstrap_lobby_leave (struct bootstrap *b);
 
 #endif
