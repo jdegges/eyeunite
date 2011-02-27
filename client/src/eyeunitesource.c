@@ -15,7 +15,7 @@ int main(void) {
   // Substitute bootsrap in here later
   char pid[EU_TOKENSTRLEN];
   char lt[EU_TOKENSTRLEN];
-  struct bootstrap* btstr = bootstrap_init (APP_ENGINE, 55555, pid);
+  struct bootstrap* btstr = bootstrap_init (APP_ENGINE, 55555, pid, NULL);
   if (bootstrap_lobby_create (btstr, lt)) {
     print_error ("Couldn't create a lobby\n");
   }
