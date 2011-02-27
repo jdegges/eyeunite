@@ -8,7 +8,7 @@ Requests can be sent with either POST or GET.
     'o': Port for other peers to use to connect with (default: 3938)
   => Returns peer ID
     Example:
-      <?xml version="1.0">
+      <?xml version="1.0"?>
       <eyeunite>
         <peer>
           <pid>peer id here</pid>
@@ -24,7 +24,7 @@ Requests can be sent with either POST or GET.
     'o' : Port for other peers to use to connect with (default: 3938)
   => Returns lobby ID and peer information
     Example:
-      <?xml version="1.0">
+      <?xml version="1.0"?>
       <eyeunite>
         <lid>lobby id here</lid>
         <peer>
@@ -49,7 +49,7 @@ Requests can be sent with either POST or GET.
     'l' : Lobby ID (generated with a request to '/n')
   => Returns a list of all peers (pid, ip, etc.) connected to the lobby
     Example:
-      <?xml version="1.0">
+      <?xml version="1.0"?>
       <eyeunite>
         <lid>lobby id here</lid>
         <peer>
