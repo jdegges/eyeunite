@@ -229,18 +229,13 @@ parse_response (xmlDocPtr doc, xmlNodePtr cur, char *lobby_token,
 }
 
 struct bootstrap *
-bootstrap_init (char *host, uint16_t port, char *pid_token)
+bootstrap_init (char *host, uint16_t port, char *pid_token, char *addr)
 {
   struct bootstrap *b = NULL;
   CURL *curl = NULL;
   CURLcode rc;
   size_t len;
   char *url = NULL;
-
-  if (NULL == pid_token) {
-    print_error ("invalid parameter: pid_token");
-    goto error;
-  }
 
   b = calloc (1, sizeof *b);
   if (NULL == b) {
@@ -330,7 +325,8 @@ bootstrap_init (char *host, uint16_t port, char *pid_token)
   print_error ("addr: %s\n", b->bsp.addr);
   print_error ("port: %u\n", b->bsp.port);
 
-  memcpy (pid_token, b->bsp.pid, EU_TOKENSTRLEN);
+  if (pid_token) memcpy (pid_token, b->bsp.pid, EU_TOKENSTRLEN);
+  if (addr) memcpy (addr, b->bsp.addr, EU_ADDRSTRLEN);
 
   curl_free (url);
   b->buf.pos = 0;
