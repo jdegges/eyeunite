@@ -16,6 +16,10 @@ size_t num_downstream_peers;
 pthread_mutex_t downstream_peers_mutex = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t upstream_peer_mutex = PTHREAD_MUTEX_INITIALIZER;
 const char* endpoint = "tcp://*:55555";
+char my_pid[EU_TOKENSTRLEN];
+char my_addr[EU_ADDRSTRLEN];
+int my_bw;
+int my_port;
 
 struct peer_node
 {
@@ -70,7 +74,9 @@ void drop_downstream_peer(struct peer_node* new_peer)
 void change_upstream_peer(struct peer_info up_peer)
 {
   upstream_peer = up_peer;
-  upstream_sock = fn_initzmq (endpoint, up_peer.pid);
+  char temp[EU_ADDRSTRLEN*4];
+  snprintf (temp, EU_ADDRSTRLEN*4, "tcp://%s:%u", up_peer.addr, up_peer.port);
+  upstream_sock = fn_initzmq (my_pid, temp);
 }
 
 void* statusThread(void* arg)
@@ -124,10 +130,6 @@ int main(int argc, char* argv[])
 
   // Follower peer info variables
   struct peer_info* my_peer_info;
-  char my_pid[EU_TOKENSTRLEN];
-  char my_addr[EU_ADDRSTRLEN];
-  int my_bw;
-  int my_port;
 
   if(argc < 4)
   {
