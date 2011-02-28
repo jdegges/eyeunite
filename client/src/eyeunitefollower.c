@@ -79,9 +79,11 @@ void* statusThread(void* arg)
   msg = fn_rcvmsg(upstream_sock);
   if(!msg)
     printf("Error: Status thread received null msg\n");
+  printf("Received Message: ");
   if(msg->type == FEED_NODE)
   {
     struct peer_node* pn = peer_node(msg->node_params);
+    printf("FEED_NODE\n");
     printf("Adding downstream peer %s\n", msg->node_params.pid);
     pthread_mutex_lock(&downstream_peers_mutex);
     add_downstream_peer(pn);
@@ -90,6 +92,7 @@ void* statusThread(void* arg)
   else if(msg->type == DROP_NODE)
   {
     struct peer_node* pn = peer_node(msg->node_params);
+    printf("DROP_NODE\n");
     printf("Dropping downstream peer %s\n", msg->node_params.pid);
     pthread_mutex_lock(&downstream_peers_mutex);
     drop_downstream_peer(pn);
@@ -98,6 +101,7 @@ void* statusThread(void* arg)
   else if(msg->type == FOLLOW_NODE)
   {
     struct peer_info pi = msg->node_params;
+    printf("FOLLOW_NODE\n");
     printf("Changing upstream peer %s\n", pi.pid);
     pthread_mutex_lock(&upstream_peer_mutex);
     change_upstream_peer(pi);
