@@ -38,13 +38,23 @@ list_add (struct list *l, void *item)
 
   if (l->size <= l->count)
     {
-      l->size = l->size ? l->size * 2 : 2;
+      uint64_t size = l->size ? l->size * 2 : 2;
+      void **data = NULL;
+      void **old_data;
 
-      if (NULL == (l->data = realloc (l->data, sizeof (void *) * l->size)))
+      if (NULL == (data = malloc (sizeof (void *) * size)))
         {
           print_error ("Out of memory");
           exit (EXIT_FAILURE);
         }
+
+      memcpy (data, l->data, sizeof (void *) * l->count);
+
+      old_data = l->data;
+      l->data = data;
+      l->size = size;
+
+      free (old_data);
     }
 
   l->data[l->count++] = item;
