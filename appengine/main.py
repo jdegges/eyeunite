@@ -31,7 +31,7 @@ class NewUser(webapp.RequestHandler):
     port = int(self.request.get('o', default_value='3938'))
     if port is 0: port = 3938
     pid = hashlib.sha224(self.request.url + self.request.remote_addr
-                       + str(random.random())).hexdigest()
+                       + str(random.random())).hexdigest()[0:6]
     p = Peer(pid=pid, ip=self.request.remote_addr, port=port)
     p.put()
 
@@ -56,7 +56,7 @@ class NewLobby(webapp.RequestHandler):
     pid = self.request.get('p', default_value='')
     if pid is '':
       pid = hashlib.sha224(self.request.url + self.request.remote_addr
-                         + str(random.random())).hexdigest()
+                         + str(random.random())).hexdigest()[0:6]
       p = Peer(pid=pid, ip=self.request.remote_addr, port=port)
       p.put()
     else:
@@ -66,7 +66,7 @@ class NewLobby(webapp.RequestHandler):
         return
 
     lid = hashlib.sha224(self.request.url + self.request.remote_addr
-                       + str(random.random())).hexdigest()
+                       + str(random.random())).hexdigest()[0:6]
     l = Lobby(lid=lid)
     l.put()
 
@@ -106,7 +106,7 @@ class JoinLobby(webapp.RequestHandler):
     pid = self.request.get('p', default_value='')
     if pid is '':
       pid = hashlib.sha224(self.request.url + self.request.remote_addr
-                         + str(random.random())).hexdigest()
+                         + str(random.random())).hexdigest()[0:6]
       p = Peer(pid=pid, ip=self.request.remote_addr, port=port)
       p.put()
     else:
