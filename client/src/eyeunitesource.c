@@ -9,13 +9,22 @@
 #include "bootstrap.h"
 
 
-int main(void) {
+int main(int argc, char* argv[]) {
+
+  if (argc != 3) {
+    printf ("Usage:\n");
+    printf ("./eyeunitesource <listenport> <bandwidth>\n");
+    return;
+  }
 
   // Create a port
   // Substitute bootsrap in here later
   char pid[EU_TOKENSTRLEN];
   char lt[EU_TOKENSTRLEN];
-  struct bootstrap* btstr = bootstrap_init (APP_ENGINE, 55555, pid, NULL);
+  char* port = atoi (argv[1]);
+  int bw = atoi (argv[2]);
+  
+  struct bootstrap* btstr = bootstrap_init (APP_ENGINE, port, pid, NULL);
   if (bootstrap_lobby_create (btstr, lt)) {
     print_error ("Couldn't create a lobby\n");
   }
@@ -23,7 +32,7 @@ int main(void) {
   void* sock = sn_initzmq (endpoint, pid);
 
   // Create tree -- needs bootstrap
-  struct tree_t* tree = initialize (sock, 5, 100, pid, "127.0.0.1", 55555, 0);
+  struct tree_t* tree = initialize (sock, 5, bw, pid, "127.0.0.1", port, 0);
 
   printTree (tree);
 

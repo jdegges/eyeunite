@@ -303,27 +303,33 @@ void printTree(struct tree_t *tree)
 {
 	struct alpha_queue *queue;
 	struct node_t *print;
+	FILE *f;
+	
+	f = fopen (FILELOC, "a+");
+	
 	
 	queue = alpha_queue_new();
 	
 	alpha_queue_push( queue, (void*) tree->root);
+fprintf(f, "%s\n", "test");
 
 	while(( print = (struct node_t*)alpha_queue_pop(queue)) != NULL) {
-		printf("Node PID: %s\n", print->p_info.pid);
-		printf("Node IP: %s\n", print->p_info.addr);
-		printf("Node # of children: %llu\n", list_count(print->children));
-    printf("Node max children: %d\n", print->max_c);
+		fprintf(f, "Node PID: %s\n", print->p_info.pid);
+		fprintf(f, "Node IP: %s\n", print->p_info.addr);
+		fprintf(f, "Node # of children: %llu\n", list_count(print->children));
+    fprintf(f, "Node max children: %d\n", print->max_c);
 		if(print->parent != NULL)
-			printf("Node Parent: %s\n", print->parent->p_info.pid);
+			fprintf(f, "Node Parent: %s\n", print->parent->p_info.pid);
 		int i;
 		for( i = 0; i < list_count(print->children); i++){
 			struct node_t *child = (struct node_t*)list_get (print->children, i);
-			printf("Node Child: %s\n", child->p_info.pid);
+			fprintf(f, "Node Child: %s\n", child->p_info.pid);
 			alpha_queue_push ( queue, (void*) child);
 		}
-		printf("\n\n\n");
+		//fprintf(f, "\n\n\n");
 
 	}
+	fclose(f);
 }
 
 
