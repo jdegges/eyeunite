@@ -46,7 +46,7 @@ fn_rcvmsg (void* socket) {
   zmq_msg_t cmd_type;
   int rc = zmq_msg_init (&cmd_type);
   assert (rc == 0);
-  rc = zmq_recv (socket, &cmd_type, ZMQ_NOBLOCK);
+  rc = zmq_recv (socket, &cmd_type, 0);//ZMQ_NOBLOCK);
 
   // IF NO MESSAGES RETURN NULL
   if (rc == -1) {
@@ -62,7 +62,7 @@ fn_rcvmsg (void* socket) {
   zmq_msg_t cmd_info;
   rc = zmq_msg_init (&cmd_info);
   assert (rc == 0);
-  rc = zmq_recv (socket, &cmd_info, ZMQ_NOBLOCK);
+  rc = zmq_recv (socket, &cmd_info, 0);//ZMQ_NOBLOCK);
   assert (rc == 0);
 
   // STORE IN A MESSAGE_STRUCT

@@ -596,6 +596,7 @@ bootstrap_lobby_get_source (struct bootstrap *b, struct peer_info *pi)
     xmlDocPtr doc;
     xmlNodePtr cur;
     struct bootstrap_peer bsp;
+    char lobby_token[EU_TOKENSTRLEN];
 
     doc = xmlParseMemory (b->buf.data, b->buf.pos);
     if (NULL == doc) {
@@ -614,7 +615,7 @@ bootstrap_lobby_get_source (struct bootstrap *b, struct peer_info *pi)
       goto error;
     }
 
-    if (parse_response (doc, cur, NULL, &bsp, 1, LOBBY_LIST)) {
+    if (parse_response (doc, cur, lobby_token, &bsp, 1, LOBBY_LIST)) {
       print_error ("parse_peer");
       goto error;
     }
