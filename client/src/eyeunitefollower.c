@@ -134,7 +134,7 @@ int main(int argc, char* argv[])
   my_bw = atoi(argv[3]);
 
   // Bootstrap
-  if(!(b = bootstrap_init("http://eyeunite.appspot.com", 80, my_pid, my_addr)))
+  if(!(b = bootstrap_init(APP_ENGINE, 8080, my_pid, my_addr)))
     printf("Failed intitializing bootstrap!\n");
   if(!(bootstrap_lobby_join(b, lobby_token)))
     printf("Failed joining lobby %s\n", lobby_token);
