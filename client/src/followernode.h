@@ -7,7 +7,7 @@
 #define DROP_DOWNSTREAM_PEER "DROP_DOWNSTREAM_PEER"
 #define CHANGE_UPSTREAM_PEER "CHANGE_UPSTREAM_PEER"
 
-const uint16_t MAX_PEERS = 100;
+#define MAX_PEERS 100
 
 void*
 fn_initzmq (const char* pid, const char* connect_to);

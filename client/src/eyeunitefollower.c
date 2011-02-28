@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <pthread.h>
+#include <string.h>
 
 #include "bootstrap.h"
 #include "followernode.h"
@@ -115,7 +116,7 @@ int main(int argc, char* argv[])
 	int i;
 	struct bootstrap* b;
   const char* endpoint = "tcp://*:55555";
-	struct peer_info* source_info;
+	struct peer_info source_info;
 	char* lobby_token;
 	void* sock;
 
@@ -141,7 +142,7 @@ int main(int argc, char* argv[])
 		printf("Failed intitializing bootstrap!\n");
 	if(!(bootstrap_lobby_join(b, lobby_token)))
 		printf("Failed joining lobby %s\n", lobby_token);
-	if(!(bootstrap_get_source(b, source_info)))
+	if(!(bootstrap_lobby_get_source(b, &source_info)))
 		printf("Failed to get source\n");
 
 	// Set my peer_info
@@ -155,7 +156,7 @@ int main(int argc, char* argv[])
 	num_downstream_peers = 0;
 
 	// Initiate connection to source
-  sock = fn_initzmq (endpoint, source_info->pid);
+  sock = fn_initzmq (endpoint, source_info.pid);
 	fn_sendmsg(sock, REQ_JOIN, &my_peer_info);
 
 	pthread_t status_thread;
