@@ -143,7 +143,7 @@ int main(int argc, char* argv[])
 
   // Set my peer_info
   memcpy(my_peer_info.pid, my_pid, EU_TOKENSTRLEN);
-  memcpy(my_peer_info.addr, my_addr, EU_TOKENSTRLEN);
+  memcpy(my_peer_info.addr, my_addr, EU_ADDRSTRLEN);
   my_peer_info.port = my_port;
   my_peer_info.peerbw = my_bw;
 
