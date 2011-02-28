@@ -10,10 +10,12 @@
 
 // Global variables for threads
 struct peer_info upstream_peer;
+void* upstream_sock;
 struct peer_node* downstream_peers;
 size_t num_downstream_peers;
 pthread_mutex_t downstream_peers_mutex = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t upstream_peer_mutex = PTHREAD_MUTEX_INITIALIZER;
+const char* endpoint = "tcp://*:55555";
 
 struct peer_node
 {
@@ -68,18 +70,13 @@ void drop_downstream_peer(struct peer_node* new_peer)
 void change_upstream_peer(struct peer_info up_peer)
 {
   upstream_peer = up_peer;
+  upstream_sock = fn_initzmq (endpoint, up_peer.pid);
 }
-
-struct status_thread_args
-{
-  void* sock;
-};
 
 void* statusThread(void* arg)
 {
-  struct status_thread_args* thread_args = (struct status_thread_args*)arg;
   message_struct* msg = NULL;
-  msg = fn_rcvmsg(thread_args->sock);
+  msg = fn_rcvmsg(upstream_sock);
   if(!msg)
     printf("Error: Status thread received null msg\n");
   if(msg->type == FEED_NODE)
@@ -115,7 +112,6 @@ int main(int argc, char* argv[])
 {
   int i;
   struct bootstrap* b;
-  const char* endpoint = "tcp://*:55555";
   struct peer_info source_info;
   char* lobby_token;
   void* sock;
@@ -156,8 +152,8 @@ int main(int argc, char* argv[])
   num_downstream_peers = 0;
 
   // Initiate connection to source
-  sock = fn_initzmq (endpoint, source_info.pid);
-  fn_sendmsg(sock, REQ_JOIN, &my_peer_info);
+  upstream_sock = fn_initzmq (endpoint, source_info.pid);
+  fn_sendmsg(upstream_sock, REQ_JOIN, &my_peer_info);
 
   pthread_t status_thread;
 
@@ -167,9 +163,7 @@ int main(int argc, char* argv[])
   // No display thread yet
 
   // Start status thread
-  struct status_thread_args st_args;
-  st_args.sock = sock;
-  pthread_create(&status_thread, NULL, statusThread, &st_args);
+  pthread_create(&status_thread, NULL, statusThread, NULL);
 
   return 0;
 }
