@@ -326,7 +326,7 @@ fprintf(f, "%s\n", "test");
 			fprintf(f, "Node Child: %s\n", child->p_info.pid);
 			alpha_queue_push ( queue, (void*) child);
 		}
-		//fprintf(f, "\n\n\n");
+		fprintf(f, "BREAK!!!!!!\n\n\n");
 
 	}
 	fclose(f);

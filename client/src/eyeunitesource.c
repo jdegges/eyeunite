@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <signal.h>
+#include <string.h>
 
 #include "sourcenode.h"
 #include "tree.h"
@@ -11,9 +12,9 @@
 
 int main(int argc, char* argv[]) {
 
-  if (argc != 3) {
+  if (argc != 4) {
     printf ("Usage:\n");
-    printf ("./eyeunitesource <listenport> <bandwidth>\n");
+    printf ("./eyeunitesource <ipaddress> <listenport> <bandwidth>\n");
     return;
   }
 
@@ -21,28 +22,33 @@ int main(int argc, char* argv[]) {
   // Substitute bootsrap in here later
   char pid[EU_TOKENSTRLEN];
   char lt[EU_TOKENSTRLEN];
-  int port = atoi (argv[1]);
-  int bw = atoi (argv[2]);
+  char ipadd[EU_ADDRSTRLEN];
+  memcpy (ipadd, argv[1], EU_ADDRSTRLEN);
+  int port = atoi (argv[2]);
+  int bw = atoi (argv[3]);
   
   struct bootstrap* btstr = bootstrap_init (APP_ENGINE, port, pid, NULL);
   if (bootstrap_lobby_create (btstr, lt)) {
     print_error ("Couldn't create a lobby\n");
   }
-  const char* endpoint = "tcp://*:55555";
+  const char endpoint[EU_ADDRSTRLEN*4];
+  snprintf(endpoint, EU_ADDRSTRLEN*4, "tcp://*:%d", port);
   void* sock = sn_initzmq (endpoint, pid);
 
   // Create tree -- needs bootstrap
-  struct tree_t* tree = initialize (sock, 5, bw, pid, "127.0.0.1", port, 0);
+  struct tree_t* tree = initialize (sock, 5, bw, pid, ipadd, port, 0);
 
   printTree (tree);
 
   while (1) {
     message_struct* msg = NULL;
     msg = sn_rcvmsg(sock);
-
+    
     if (msg != NULL) {
+
       switch (msg->type) {
         case REQ_MOVE:
+          print_error ("Request move from %s\n", msg->node_params.pid);
           ;int prmve = movePeer(tree, msg->node_params.pid);
           if (prmve != 0) {
             switch (prmve) {
@@ -57,10 +63,11 @@ int main(int argc, char* argv[]) {
                 break;
             }
           }
-          //printTree (tree);
+          printTree (tree);
           break;
 
         case REQ_JOIN:
+          print_error ("Request join from %s\n", msg->node_params.pid);
           ;int pradd = addPeer (tree, msg->node_params.peerbw, msg->node_params.pid, msg->node_params.addr, msg->node_params.port);
           if (pradd != 0) {
               switch (pradd) {
@@ -72,15 +79,16 @@ int main(int argc, char* argv[]) {
                   break;
               }
           }
-          //printTree (tree);
+          printTree (tree);
           break;
 
         case REQ_EXIT:
+          print_error ("Request exit from %s\n", msg->node_params.pid);
           ;int prrmv = removePeer (tree, msg->node_params.pid);
           if (prrmv == -1) {
             print_error ("Memory Error in remove peer\n");
           }
-          //printTree (tree);
+          printTree (tree);
       }
     }
   }
