@@ -6,7 +6,8 @@
 
 #define EU_ADDRSTRLEN INET6_ADDRSTRLEN
 #define EU_TOKENSTRLEN 224
-#define APP_ENGINE "http://eyeunite.appspot.com"
+#define FILELOC "log.txt"
+#define APP_ENGINE "http://131.179.144.41:8080"
 
 struct peer_info
 {
