@@ -78,13 +78,13 @@ void* statusThread(void* arg)
   message_struct* msg = NULL;
   msg = fn_rcvmsg(upstream_sock);
   if(!msg)
-    printf("Error: Status thread received null msg\n");
-  printf("Received Message: ");
+    print_error("Error: Status thread received null msg\n");
+  print_error("Received Message: ");
   if(msg->type == FEED_NODE)
   {
     struct peer_node* pn = peer_node(msg->node_params);
-    printf("FEED_NODE\n");
-    printf("Adding downstream peer %s\n", msg->node_params.pid);
+    print_error("FEED_NODE\n");
+    print_error("Adding downstream peer %s\n", msg->node_params.pid);
     pthread_mutex_lock(&downstream_peers_mutex);
     add_downstream_peer(pn);
     pthread_mutex_unlock(&downstream_peers_mutex);
@@ -92,8 +92,8 @@ void* statusThread(void* arg)
   else if(msg->type == DROP_NODE)
   {
     struct peer_node* pn = peer_node(msg->node_params);
-    printf("DROP_NODE\n");
-    printf("Dropping downstream peer %s\n", msg->node_params.pid);
+    print_error("DROP_NODE\n");
+    print_error("Dropping downstream peer %s\n", msg->node_params.pid);
     pthread_mutex_lock(&downstream_peers_mutex);
     drop_downstream_peer(pn);
     pthread_mutex_unlock(&downstream_peers_mutex);
@@ -101,8 +101,8 @@ void* statusThread(void* arg)
   else if(msg->type == FOLLOW_NODE)
   {
     struct peer_info pi = msg->node_params;
-    printf("FOLLOW_NODE\n");
-    printf("Changing upstream peer %s\n", pi.pid);
+    print_error("FOLLOW_NODE\n");
+    print_error("Changing upstream peer %s\n", pi.pid);
     pthread_mutex_lock(&upstream_peer_mutex);
     change_upstream_peer(pi);
     pthread_mutex_unlock(&upstream_peer_mutex);
@@ -139,11 +139,11 @@ int main(int argc, char* argv[])
 
   // Bootstrap
   if(!(b = bootstrap_init(APP_ENGINE, 8080, my_pid, my_addr)))
-    printf("Failed intitializing bootstrap!\n");
+    print_error("Failed intitializing bootstrap!\n");
   if(!(bootstrap_lobby_join(b, lobby_token)))
-    printf("Failed joining lobby %s\n", lobby_token);
+    print_error("Failed joining lobby %s\n", lobby_token);
   if(!(bootstrap_lobby_get_source(b, &source_info)))
-    printf("Failed to get source\n");
+    print_error("Failed to get source\n");
 
   // Set my peer_info
   memcpy(my_peer_info.pid, my_pid, EU_TOKENSTRLEN);
