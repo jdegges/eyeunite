@@ -50,7 +50,7 @@ sn_rcvmsg (void* socket) {
   zmq_msg_t req_id;
   int rc = zmq_msg_init (&req_id);
   assert (rc == 0);
-  rc = zmq_recv (socket, &req_id, ZMQ_NOBLOCK);
+  rc = zmq_recv (socket, &req_id, 0);
   
   // IF NO MESSAGES RETURN NULL
   if (rc == -1) {
