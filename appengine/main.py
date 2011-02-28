@@ -115,13 +115,6 @@ class JoinLobby(webapp.RequestHandler):
         self.response.out.write("Error: invalid pid")
         return
 
-    ap = db.GqlQuery("SELECT * FROM ActivePeers WHERE lid = :1 AND pid = :2",
-                     l.lid, p.pid).get()
-    if ap is None:
-      self.response.out.write("Adding to aps<br/>")
-      ap = ActivePeers(lid=l.lid, pid=p.pid)
-      ap.put()
-
     self.response.out.write("<?xml version=\"1.0\"?>\n")
     self.response.out.write("<eyeunite>\n")
     self.response.out.write("  <lid>" + l.lid + "</lid>\n")
