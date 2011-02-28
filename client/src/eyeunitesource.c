@@ -21,7 +21,7 @@ int main(int argc, char* argv[]) {
   // Substitute bootsrap in here later
   char pid[EU_TOKENSTRLEN];
   char lt[EU_TOKENSTRLEN];
-  char* port = atoi (argv[1]);
+  int port = atoi (argv[1]);
   int bw = atoi (argv[2]);
   
   struct bootstrap* btstr = bootstrap_init (APP_ENGINE, port, pid, NULL);
