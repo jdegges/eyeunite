@@ -41,29 +41,29 @@ require 'zmq'
 -- ...
 
 eu = {
-  FOLLOW_NODE = 1,
-  FEED_NODE = 2,
-  DROP_NODE = 3,
-  REQ_MOVE = 4,
-  REQ_JOIN = 5,
-  REQ_EXIT = 6,
+  FOLLOW_NODE = "\0\0\0\0",
+  FEED_NODE = "\2\0\0\0",
+  DROP_NODE = "\3\0\0\0",
+  REQ_MOVE = "\4\0\0\0",
+  REQ_JOIN = "\5\0\0\0",
+  REQ_EXIT = "\6\0\0\0",
 
-  TOKENSTRLEN = 56,
-  ADDRSTRLEN = 46
+  TOKENSTRLEN = 7,
+  ADDRSTRLEN = 16,
+  PORTSTRLEN = 7
 }
 
 local const = {
-  PORTUINTLEN = 2,
   PEERBWINTLEN = 4,
 }
 
 const.MSG_PID_START = 1
 const.MSG_PID_STOP = const.MSG_PID_START + eu.TOKENSTRLEN
-const.MSG_ADDR_START = const.MSG_PID_STOP + 1
+const.MSG_ADDR_START = const.MSG_PID_STOP
 const.MSG_ADDR_STOP = const.MSG_ADDR_START + eu.ADDRSTRLEN
-const.MSG_PORT_START = const.MSG_ADDR_STOP + 1
-const.MSG_PORT_STOP = const.MSG_PORT_START + const.PORTUINTLEN
-const.MSG_PEERBW_START = const.MSG_PORT_STOP + 1
+const.MSG_PORT_START = const.MSG_ADDR_STOP
+const.MSG_PORT_STOP = const.MSG_PORT_START + eu.PORTSTRLEN
+const.MSG_PEERBW_START = const.MSG_PORT_STOP
 const.MSG_PEERBW_STOP = const.MSG_PEERBW_START + const.PEERBWINTLEN
 
 function follower_init (pid, addr, port, bandwidth)
@@ -96,8 +96,9 @@ end
 
 function follower_send_request (follower, msg_type)
   follower.sock:send (msg_type, zmq.SNDMORE)
-  follower.sock:send (follower.pid .. follower.addr .. follower.port
-                   .. follower.bandwidth)
+
+  msg = follower.pid .. follower.addr .. follower.port .. follower.bandwidth
+  follower.sock:send (msg)
 
   return true
 end
