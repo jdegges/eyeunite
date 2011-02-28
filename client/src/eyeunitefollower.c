@@ -16,6 +16,10 @@ size_t num_downstream_peers;
 pthread_mutex_t downstream_peers_mutex = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t upstream_peer_mutex = PTHREAD_MUTEX_INITIALIZER;
 const char* endpoint = "tcp://*:55555";
+char my_pid[EU_TOKENSTRLEN];
+char my_addr[EU_ADDRSTRLEN];
+int my_bw;
+int my_port;
 
 struct peer_node
 {
@@ -70,19 +74,24 @@ void drop_downstream_peer(struct peer_node* new_peer)
 void change_upstream_peer(struct peer_info up_peer)
 {
   upstream_peer = up_peer;
-  upstream_sock = fn_initzmq (endpoint, up_peer.pid);
+  char temp[EU_ADDRSTRLEN*4];
+  snprintf (temp, EU_ADDRSTRLEN*4, "tcp://%s:%u", up_peer.addr, up_peer.port);
+  upstream_sock = fn_initzmq (my_pid, temp);
 }
 
 void* statusThread(void* arg)
 {
-  message_struct* msg = NULL;
-  msg = fn_rcvmsg(upstream_sock);
+  while(1)
+  {
+  message_struct* msg = fn_rcvmsg(upstream_sock);
   if(!msg)
-    printf("Error: Status thread received null msg\n");
+    print_error("Error: Status thread received null msg\n");
+  print_error("Received Message: ");
   if(msg->type == FEED_NODE)
   {
     struct peer_node* pn = peer_node(msg->node_params);
-    printf("Adding downstream peer %s\n", msg->node_params.pid);
+    print_error("FEED_NODE\n");
+    print_error("Adding downstream peer %s\n", msg->node_params.pid);
     pthread_mutex_lock(&downstream_peers_mutex);
     add_downstream_peer(pn);
     pthread_mutex_unlock(&downstream_peers_mutex);
@@ -90,7 +99,8 @@ void* statusThread(void* arg)
   else if(msg->type == DROP_NODE)
   {
     struct peer_node* pn = peer_node(msg->node_params);
-    printf("Dropping downstream peer %s\n", msg->node_params.pid);
+    print_error("DROP_NODE\n");
+    print_error("Dropping downstream peer %s\n", msg->node_params.pid);
     pthread_mutex_lock(&downstream_peers_mutex);
     drop_downstream_peer(pn);
     pthread_mutex_unlock(&downstream_peers_mutex);
@@ -98,13 +108,15 @@ void* statusThread(void* arg)
   else if(msg->type == FOLLOW_NODE)
   {
     struct peer_info pi = msg->node_params;
-    printf("Changing upstream peer %s\n", pi.pid);
+    print_error("FOLLOW_NODE\n");
+    print_error("Changing upstream peer %s\n", pi.pid);
     pthread_mutex_lock(&upstream_peer_mutex);
     change_upstream_peer(pi);
     pthread_mutex_unlock(&upstream_peer_mutex);
   }
   else
   {
+  }
   }
 }
 
@@ -117,11 +129,7 @@ int main(int argc, char* argv[])
   void* sock;
 
   // Follower peer info variables
-  struct peer_info my_peer_info;
-  char my_pid[EU_TOKENSTRLEN];
-  char* my_addr;
-  int my_bw;
-  int my_port;
+  struct peer_info* my_peer_info;
 
   if(argc < 4)
   {
@@ -134,26 +142,46 @@ int main(int argc, char* argv[])
   my_bw = atoi(argv[3]);
 
   // Bootstrap
-  if(!(b = bootstrap_init("http://eyeunite.appspot.com", 80, my_pid, my_addr)))
-    printf("Failed intitializing bootstrap!\n");
-  if(!(bootstrap_lobby_join(b, lobby_token)))
-    printf("Failed joining lobby %s\n", lobby_token);
-  if(!(bootstrap_lobby_get_source(b, &source_info)))
-    printf("Failed to get source\n");
+  if(!(b = bootstrap_init(APP_ENGINE, 8080, my_pid, my_addr)))
+  {
+    print_error("Failed intitializing bootstrap!\n");
+    return 1;
+  }
+  if(bootstrap_lobby_join(b, lobby_token))
+  {
+    print_error("Failed joining lobby %s\n", lobby_token);
+    return 1;
+  }
+  if(bootstrap_lobby_get_source(b, &source_info))
+  {
+    print_error("Failed to get source\n");
+    return 1;
+  }
+
+  print_error ("aok");
 
   // Set my peer_info
-  memcpy(my_peer_info.pid, my_pid, EU_TOKENSTRLEN);
-  memcpy(my_peer_info.addr, my_addr, EU_ADDRSTRLEN);
-  my_peer_info.port = my_port;
-  my_peer_info.peerbw = my_bw;
+  my_peer_info = malloc (sizeof *my_peer_info);
+  memcpy(my_peer_info->pid, my_pid, EU_TOKENSTRLEN);
+  memcpy(my_peer_info->addr, my_addr, EU_ADDRSTRLEN);
+  my_peer_info->port = my_port;
+  my_peer_info->peerbw = my_bw;
+  print_error ("aok");
 
   // Finish initialization
   downstream_peers = NULL;
   num_downstream_peers = 0;
+  print_error ("aok");
 
   // Initiate connection to source
-  upstream_sock = fn_initzmq (endpoint, source_info.pid);
-  fn_sendmsg(upstream_sock, REQ_JOIN, &my_peer_info);
+  print_error ("source pid: %s", source_info.pid);
+  print_error ("source ip: %s", source_info.addr);
+  char temp[EU_ADDRSTRLEN*4];
+  snprintf (temp, EU_ADDRSTRLEN*4, "tcp://%s:%u", source_info.addr, source_info.port);
+  print_error ("tmp addr: %s", temp);
+  upstream_sock = fn_initzmq (my_pid, temp);
+  fn_sendmsg(upstream_sock, REQ_JOIN, my_peer_info);
+  print_error ("aok");
 
   pthread_t status_thread;
 
@@ -164,6 +192,10 @@ int main(int argc, char* argv[])
 
   // Start status thread
   pthread_create(&status_thread, NULL, statusThread, NULL);
+
+  pthread_join(status_thread, NULL);
+
+  fn_closesocket(upstream_sock);
 
   return 0;
 }

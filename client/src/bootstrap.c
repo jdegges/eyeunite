@@ -321,9 +321,9 @@ bootstrap_init (char *host, uint16_t port, char *pid_token, char *addr)
   strcpy (b->host, host);
 
   /* temporary, should be removed */
-  print_error ("pid:  %s\n", b->bsp.pid);
-  print_error ("addr: %s\n", b->bsp.addr);
-  print_error ("port: %u\n", b->bsp.port);
+  print_error ("pid:  %s", b->bsp.pid);
+  print_error ("addr: %s", b->bsp.addr);
+  print_error ("port: %u", b->bsp.port);
 
   if (pid_token) memcpy (pid_token, b->bsp.pid, EU_TOKENSTRLEN);
   if (addr) memcpy (addr, b->bsp.addr, EU_ADDRSTRLEN);
@@ -436,10 +436,10 @@ bootstrap_lobby_create (struct bootstrap *b, char *lobby_token)
   }
 
   /* temporary, should be removed */
-  print_error ("lid:  %s\n", b->lobby_token);
-  print_error ("pid:  %s\n", b->bsp.pid);
-  print_error ("addr: %s\n", b->bsp.addr);
-  print_error ("port: %u\n", b->bsp.port);
+  print_error ("lid:  %s", b->lobby_token);
+  print_error ("pid:  %s", b->bsp.pid);
+  print_error ("addr: %s", b->bsp.addr);
+  print_error ("port: %u", b->bsp.port);
 
   memcpy (lobby_token, b->lobby_token, EU_TOKENSTRLEN);
 
@@ -533,10 +533,10 @@ bootstrap_lobby_join (struct bootstrap *b, char *lobby_token)
   }
 
   /* temporary, should be removed */
-  print_error ("lid:  %s\n", b->lobby_token);
-  print_error ("pid:  %s\n", b->bsp.pid);
-  print_error ("addr: %s\n", b->bsp.addr);
-  print_error ("port: %u\n", b->bsp.port);
+  print_error ("lid:  %s", b->lobby_token);
+  print_error ("pid:  %s", b->bsp.pid);
+  print_error ("addr: %s", b->bsp.addr);
+  print_error ("port: %u", b->bsp.port);
 
   curl_free (url);
   b->buf.pos = 0;
@@ -596,6 +596,7 @@ bootstrap_lobby_get_source (struct bootstrap *b, struct peer_info *pi)
     xmlDocPtr doc;
     xmlNodePtr cur;
     struct bootstrap_peer bsp;
+    char lobby_token[EU_TOKENSTRLEN];
 
     doc = xmlParseMemory (b->buf.data, b->buf.pos);
     if (NULL == doc) {
@@ -614,7 +615,7 @@ bootstrap_lobby_get_source (struct bootstrap *b, struct peer_info *pi)
       goto error;
     }
 
-    if (parse_response (doc, cur, NULL, &bsp, 1, LOBBY_LIST)) {
+    if (parse_response (doc, cur, lobby_token, &bsp, 1, LOBBY_LIST)) {
       print_error ("parse_peer");
       goto error;
     }
@@ -626,10 +627,10 @@ bootstrap_lobby_get_source (struct bootstrap *b, struct peer_info *pi)
   }
 
   /* temporary, should be removed */
-  print_error ("lid:  %s\n", b->lobby_token);
-  print_error ("pid:  %s\n", b->bsp.pid);
-  print_error ("addr: %s\n", b->bsp.addr);
-  print_error ("port: %u\n", b->bsp.port);
+  print_error ("lid:  %s", b->lobby_token);
+  print_error ("pid:  %s", b->bsp.pid);
+  print_error ("addr: %s", b->bsp.addr);
+  print_error ("port: %u", b->bsp.port);
 
   curl_free (url);
   b->buf.pos = 0;
