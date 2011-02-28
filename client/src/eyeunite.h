@@ -2,7 +2,7 @@
 #define EU_EYEUNITE_H
 
 #include <netdb.h>
-#include <easyudp.h>
+#include "easyudp.h"
 
 #define EU_ADDRSTRLEN INET6_ADDRSTRLEN
 #define EU_TOKENSTRLEN 224

@@ -112,47 +112,57 @@ void* statusThread(void* arg)
 
 int main(int argc, char* argv[])
 {
-	struct bootstrap* b;
-	char* lobby_token = "5432123456";
-	struct bootstrap_peer peers_list[MAX_PEERS];
 	int i;
+	struct bootstrap* b;
   const char* endpoint = "tcp://*:55555";
-	char* source_pid;
+	struct peer_info* source_info;
+	char* lobby_token;
 	void* sock;
 
-	if(argc >= 2)
-		lobby_token = argv[1];
+	// Follower peer info variables
+	struct peer_info my_peer_info;
+	char my_pid[EU_TOKENSTRLEN];
+	char* my_addr;
+	int my_bw;
+	int my_port;
 
-	//-- Fix this after bootstrap changes --
+	if(argc < 4)
+	{
+		printf("Usage:\n");
+		printf("eyeunitefollower <lobby token> <listen port> <bandwidth>");
+		return -1;
+	}
+	lobby_token = argv[1];
+	my_port = atoi(argv[2]);
+	my_bw = atoi(argv[3]);
 
-	if(!(b = bootstrap_init("http://eyeunite.appspot.com", 80)))
+	// Bootstrap
+	if(!(b = bootstrap_init("http://eyeunite.appspot.com", 80, my_pid, my_addr)))
 		printf("Failed intitializing bootstrap!\n");
 	if(!(bootstrap_lobby_join(b, lobby_token)))
 		printf("Failed joining lobby %s\n", lobby_token);
-	size_t num_peers = MAX_PEERS;
-	if(!(bootstrap_lobby_list(b, peers_list, num_peers)))
-		printf("Failed to get peer list\n");
+	if(!(bootstrap_get_source(b, source_info)))
+		printf("Failed to get source\n");
 
-	//--
+	// Set my peer_info
+	memcpy(my_peer_info.pid, my_pid, EU_TOKENSTRLEN);
+	memcpy(my_peer_info.addr, my_addr, EU_TOKENSTRLEN);
+	my_peer_info.port = my_port;
+	my_peer_info.peerbw = my_bw;
 
-	// Initialization Step
-	for(i = 0; i < num_peers; i++)
-	{
-		// Ping library? easyudp? -- Need to ask joey about that
-	}
-	// Report pings to source, for now, pretend we get it back
-
-	// Fix these
-	source_pid = "1";
+	// Finish initialization
 	downstream_peers = NULL;
 	num_downstream_peers = 0;
 
 	// Initiate connection to source
-  sock = fn_initzmq (endpoint, source_pid);
+  sock = fn_initzmq (endpoint, source_info->pid);
+	fn_sendmsg(sock, REQ_JOIN, &my_peer_info);
 
 	pthread_t status_thread;
-	pthread_t data_rcv_thread;
-	pthread_t data_push_thread;
+
+	// NOT USED YET
+	// pthread_t data_rcv_thread;
+	// pthread_t data_push_thread;
 	// No display thread yet
 
 	// Start status thread
@@ -160,6 +170,5 @@ int main(int argc, char* argv[])
 	st_args.sock = sock;
 	pthread_create(&status_thread, NULL, statusThread, &st_args);
 
-	free(peers_list);
 	return 0;
 }
