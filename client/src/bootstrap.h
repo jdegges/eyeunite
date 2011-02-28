@@ -32,7 +32,7 @@ bootstrap_global_cleanup (void);
  *  Returns: NULL on failure
  */
 struct bootstrap *
-bootstrap_init (char *host, uint16_t port, char *pid_token, char *addr);
+bootstrap_init (char *host, char *port, char *pid_token, char *addr);
 
 void
 bootstrap_cleanup (struct bootstrap *b);

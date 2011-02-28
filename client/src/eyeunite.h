@@ -3,10 +3,11 @@
 
 #include <netdb.h>
 
-#define EU_ADDRSTRLEN INET_ADDRSTRLEN
 #define EU_TOKENSTRLEN 7
 #define EU_PORTSTRLEN 7
 #define EU_PACKETLEN ((1<<16)-1-8-20)
+#define EU_ADDRSTRLEN INET_ADDRSTRLEN
+#define EU_HOSTURLLEN (3+1+2+EU_ADDRSTRLEN+1+EU_PORTSTRLEN)
 
 #define FILELOC "log.txt"
 #define APP_ENGINE "http://131.179.144.41:8080"
@@ -15,7 +16,7 @@ struct peer_info
 {
   char pid[EU_TOKENSTRLEN];
   char addr[EU_ADDRSTRLEN];
-  uint16_t port;
+  char port[EU_PORTSTRLEN];
   int peerbw;
 };
 

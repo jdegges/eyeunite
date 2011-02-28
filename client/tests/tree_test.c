@@ -34,17 +34,17 @@ int main (void){
 	char pid10[EU_TOKENSTRLEN] = "10\0";
 	char addr10[EU_ADDRSTRLEN] = "ip10\0";
 
-	struct tree_t* tree = initialize(NULL, 50, 100, pid1, addr1, 10, 1);
+	struct tree_t* tree = initialize(NULL, 50, 100, pid1, addr1, "10", 1);
 
-	addPeer (tree, 200, pid2, addr2, 20);
-	addPeer (tree, 300, pid3, addr3, 30);
-	addPeer (tree, 400, pid4, addr4, 40);
-	addPeer (tree, 500, pid5, addr5, 50);
-	addPeer (tree, 500, pid6, addr6, 60);
-	addPeer (tree, 500, pid7, addr7, 70);
-	addPeer (tree, 500, pid8, addr8, 80);
-	addPeer (tree, 500, pid9, addr9, 90);
-	addPeer (tree, 500, pid10, addr10, 100);
+	addPeer (tree, 200, pid2, addr2, "20");
+	addPeer (tree, 300, pid3, addr3, "30");
+	addPeer (tree, 400, pid4, addr4, "40");
+	addPeer (tree, 500, pid5, addr5, "50");
+	addPeer (tree, 500, pid6, addr6, "60");
+	addPeer (tree, 500, pid7, addr7, "70");
+	addPeer (tree, 500, pid8, addr8, "80");
+	addPeer (tree, 500, pid9, addr9, "90");
+	addPeer (tree, 500, pid10, addr10, "100");
 
 	//printTree(tree);
 

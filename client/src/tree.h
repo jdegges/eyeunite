@@ -12,7 +12,7 @@ struct tree_t;
  * Returns a pointer to the tree or NULL if out of memory.
  */
 struct tree_t* 
-initialize(void* socket, int streambw, int peerbw, char pid[], char addr[], uint16_t port, int debug_mode);
+initialize(void* socket, int streambw, int peerbw, char pid[], char addr[], char port[], int debug_mode);
 
 
 /*
@@ -22,7 +22,7 @@ initialize(void* socket, int streambw, int peerbw, char pid[], char addr[], uint
  * Returns -2 if no empty slots found.
  */
 int 
-addPeer(struct tree_t *tree, int peerbw, char pid[], char addr[], uint16_t port);
+addPeer(struct tree_t *tree, int peerbw, char pid[], char addr[], char port[]);
 
 
 /*

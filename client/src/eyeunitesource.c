@@ -23,16 +23,17 @@ int main(int argc, char* argv[]) {
   char pid[EU_TOKENSTRLEN];
   char lt[EU_TOKENSTRLEN];
   char ipadd[EU_ADDRSTRLEN];
+  char port[EU_PORTSTRLEN];
   memcpy (ipadd, argv[1], EU_ADDRSTRLEN);
-  int port = atoi (argv[2]);
+  memcpy (port, argv[2], EU_PORTSTRLEN);
   int bw = atoi (argv[3]);
   
   struct bootstrap* btstr = bootstrap_init (APP_ENGINE, port, pid, NULL);
   if (bootstrap_lobby_create (btstr, lt)) {
     print_error ("Couldn't create a lobby\n");
   }
-  const char endpoint[EU_ADDRSTRLEN*4];
-  snprintf(endpoint, EU_ADDRSTRLEN*4, "tcp://*:%d", port);
+  char endpoint[EU_ADDRSTRLEN*4];
+  snprintf(endpoint, EU_ADDRSTRLEN*4, "tcp://*:%s", port);
   void* sock = sn_initzmq (endpoint, pid);
 
   // Create tree -- needs bootstrap

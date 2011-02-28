@@ -20,7 +20,7 @@ int main(void)
   struct peer_info* temp_node = malloc (sizeof(struct peer_info));
   memcpy(temp_node->pid, "222", 4);
   memcpy(temp_node->addr, "127.0.0.1", 10);
-  temp_node->port = 444;
+  memcpy(temp_node->port, "444", 4);
   temp_node->peerbw = 44;
   fn_sendmsg(sock, REQ_JOIN, temp_node);
 
@@ -35,7 +35,7 @@ int main(void)
   printf("Type:            %s\n", sn_mtype_to_string(msg->type));
   printf("FOLLOW PID:      %s\n", msg->node_params.pid);
   printf("FOLLOW ADDRESS:  %s\n", msg->node_params.addr);
-  printf("FOLLOW PORT:     %i\n", msg->node_params.port);
+  printf("FOLLOW PORT:     %s\n", msg->node_params.port);
   printf("BW:              %i\n", msg->node_params.peerbw);
   printf("\n\n");
 
