@@ -139,7 +139,7 @@ class ListLobby(webapp.RequestHandler):
 
     self.response.out.write("<?xml version=\"1.0\"?>\n")
     self.response.out.write("<eyeunite>\n")
-    self.response.out.write("  <lid>" + l.lid + "</lid>\n")
+    self.response.out.write("  <lid>" + lid + "</lid>\n")
 
     activepeers = db.GqlQuery("SELECT * FROM ActivePeers WHERE lid = :1", lid)
     for ap in activepeers:
