@@ -14,7 +14,7 @@ typedef enum {
 } message_type;
 
 typedef struct {
-  const char* identity;
+  char* identity;
   message_type type;
   struct peer_info node_params;
 } message_struct;
