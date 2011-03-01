@@ -21,7 +21,7 @@ struct bootstrap_peer
 {
   char pid[EU_TOKENSTRLEN];
   char addr[EU_ADDRSTRLEN];
-  uint16_t port;
+  char port[EU_PORTSTRLEN];
 };
 
 struct bootstrap
@@ -107,8 +107,6 @@ curl_writefunction (void *ptr, size_t size, size_t nmemb, void *stream)
 static int
 parse_peer (xmlDocPtr doc, xmlNodePtr cur, struct bootstrap_peer *bsp)
 {
-  char port[EU_PORTSTRLEN];
-
   if (NULL == doc || NULL == cur || NULL == bsp) {
     print_error ("invalid arguments");
     return -1;
@@ -118,16 +116,14 @@ parse_peer (xmlDocPtr doc, xmlNodePtr cur, struct bootstrap_peer *bsp)
   while (cur != NULL) {
     parse_option (doc, cur, bsp->pid, EU_TOKENSTRLEN, "pid");
     parse_option (doc, cur, bsp->addr, EU_ADDRSTRLEN, "ip");
-    parse_option (doc, cur, port, EU_PORTSTRLEN, "port");
+    parse_option (doc, cur, bsp->port, EU_PORTSTRLEN, "port");
     cur = cur->next;
   }
 
-  if (0 == bsp->pid[0] || 0 == bsp->addr[0] || 0 == port[0]) {
+  if (0 == bsp->pid[0] || 0 == bsp->addr[0] || 0 == bsp->port[0]) {
     print_error ("incomplete <peer> document");
     return -1;
   }
-
-  bsp->port = strtoul (port, NULL, 10);
 
   return 0;
 }
@@ -229,7 +225,7 @@ parse_response (xmlDocPtr doc, xmlNodePtr cur, char *lobby_token,
 }
 
 struct bootstrap *
-bootstrap_init (char *host, uint16_t port, char *pid_token, char *addr)
+bootstrap_init (char *host, char *port, char *pid_token, char *addr)
 {
   struct bootstrap *b = NULL;
   CURL *curl = NULL;
@@ -250,14 +246,14 @@ bootstrap_init (char *host, uint16_t port, char *pid_token, char *addr)
   }
 
   /* construct request url */
-  len = snprintf (NULL, 0, "%s/u?o=%u", host, port) + 1;
+  len = snprintf (NULL, 0, "%s/u?o=%s", host, port) + 1;
   b->buf.pos = 0;
   if (expand_buffer (&b->buf, len+0)) {
     print_error ("expand_buffer");
     goto error;
   }
 
-  len = snprintf (b->buf.data, b->buf.len, "%s/u?o=%u", host, port);
+  len = snprintf (b->buf.data, b->buf.len, "%s/u?o=%s", host, port);
   if (b->buf.len < len) {
     print_error ("absurd failure");
     goto error;
@@ -305,7 +301,7 @@ bootstrap_init (char *host, uint16_t port, char *pid_token, char *addr)
       goto error;
     }
 
-    if (port && b->bsp.port != port) {
+    if (strncmp (b->bsp.port,  port, EU_PORTSTRLEN)) {
       print_error ("server did accept my port request");
       goto error;
     }
@@ -323,7 +319,7 @@ bootstrap_init (char *host, uint16_t port, char *pid_token, char *addr)
   /* temporary, should be removed */
   print_error ("pid:  %s", b->bsp.pid);
   print_error ("addr: %s", b->bsp.addr);
-  print_error ("port: %u", b->bsp.port);
+  print_error ("port: %s", b->bsp.port);
 
   if (pid_token) memcpy (pid_token, b->bsp.pid, EU_TOKENSTRLEN);
   if (addr) memcpy (addr, b->bsp.addr, EU_ADDRSTRLEN);
@@ -370,14 +366,14 @@ bootstrap_lobby_create (struct bootstrap *b, char *lobby_token)
 
   /* construct request url */
   b->buf.pos = 0;
-  len = snprintf (b->buf.data, b->buf.len, "%s/n?p=%s&o=%u", b->host,
+  len = snprintf (b->buf.data, b->buf.len, "%s/n?p=%s&o=%s", b->host,
                   b->bsp.pid, b->bsp.port) + 1;
   if (len && expand_buffer (&b->buf, len)) {
     print_error ("expand_buffer");
     goto error;
   }
 
-  len = snprintf (b->buf.data, b->buf.len, "%s/n?p=%s&o=%u", b->host,
+  len = snprintf (b->buf.data, b->buf.len, "%s/n?p=%s&o=%s", b->host,
                   b->bsp.pid, b->bsp.port);
   if (b->buf.len <= len) {
     print_error ("absurd failure");
@@ -429,7 +425,7 @@ bootstrap_lobby_create (struct bootstrap *b, char *lobby_token)
 
     if (strncmp (b->bsp.pid, bsp.pid, EU_TOKENSTRLEN)
      || strncmp (b->bsp.addr, bsp.addr, EU_ADDRSTRLEN)
-     || b->bsp.port != bsp.port) {
+     || strncmp (b->bsp.port, bsp.port, EU_PORTSTRLEN)) {
       print_error ("server did not process my request properly");
       goto error;
     }
@@ -439,7 +435,7 @@ bootstrap_lobby_create (struct bootstrap *b, char *lobby_token)
   print_error ("lid:  %s", b->lobby_token);
   print_error ("pid:  %s", b->bsp.pid);
   print_error ("addr: %s", b->bsp.addr);
-  print_error ("port: %u", b->bsp.port);
+  print_error ("port: %s", b->bsp.port);
 
   memcpy (lobby_token, b->lobby_token, EU_TOKENSTRLEN);
 
@@ -466,14 +462,14 @@ bootstrap_lobby_join (struct bootstrap *b, char *lobby_token)
 
   /* construct request url */
   b->buf.pos = 0;
-  len = snprintf (b->buf.data, b->buf.len, "%s/j?l=%s&p=%s&o=%u", b->host,
+  len = snprintf (b->buf.data, b->buf.len, "%s/j?l=%s&p=%s&o=%s", b->host,
                   lobby_token, b->bsp.pid, b->bsp.port) + 1;
   if (len && expand_buffer (&b->buf, len)) {
     print_error ("expand_buffer");
     goto error;
   }
 
-  len = snprintf (b->buf.data, b->buf.len, "%s/j?l=%s&p=%s&o=%u", b->host,
+  len = snprintf (b->buf.data, b->buf.len, "%s/j?l=%s&p=%s&o=%s", b->host,
                   lobby_token, b->bsp.pid, b->bsp.port);
   if (b->buf.len <= len) {
     print_error ("absurd failure");
@@ -526,7 +522,7 @@ bootstrap_lobby_join (struct bootstrap *b, char *lobby_token)
     if (strncmp (b->lobby_token, lobby_token, EU_TOKENSTRLEN)
      || strncmp (b->bsp.pid, bsp.pid, EU_TOKENSTRLEN)
      || strncmp (b->bsp.addr, bsp.addr, EU_ADDRSTRLEN)
-     || b->bsp.port != bsp.port) {
+     || strncmp (b->bsp.port, bsp.port, EU_PORTSTRLEN)) {
       print_error ("server did not process my request properly");
       goto error;
     }
@@ -536,7 +532,7 @@ bootstrap_lobby_join (struct bootstrap *b, char *lobby_token)
   print_error ("lid:  %s", b->lobby_token);
   print_error ("pid:  %s", b->bsp.pid);
   print_error ("addr: %s", b->bsp.addr);
-  print_error ("port: %u", b->bsp.port);
+  print_error ("port: %s", b->bsp.port);
 
   curl_free (url);
   b->buf.pos = 0;
@@ -622,7 +618,7 @@ bootstrap_lobby_get_source (struct bootstrap *b, struct peer_info *pi)
 
     memcpy (pi->pid, bsp.pid, EU_TOKENSTRLEN);
     memcpy (pi->addr, bsp.addr, EU_ADDRSTRLEN);
-    pi->port = bsp.port;
+    memcpy (pi->port, bsp.port, EU_PORTSTRLEN);
     pi->peerbw = -1;
   }
 
@@ -630,7 +626,7 @@ bootstrap_lobby_get_source (struct bootstrap *b, struct peer_info *pi)
   print_error ("lid:  %s", b->lobby_token);
   print_error ("pid:  %s", b->bsp.pid);
   print_error ("addr: %s", b->bsp.addr);
-  print_error ("port: %u", b->bsp.port);
+  print_error ("port: %s", b->bsp.port);
 
   curl_free (url);
   b->buf.pos = 0;

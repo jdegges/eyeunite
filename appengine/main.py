@@ -31,7 +31,7 @@ class NewUser(webapp.RequestHandler):
     port = int(self.request.get('o', default_value='3938'))
     if port is 0: port = 3938
     pid = hashlib.sha224(self.request.url + self.request.remote_addr
-                       + str(random.random())).hexdigest()
+                       + str(random.random())).hexdigest()[0:6]
     p = Peer(pid=pid, ip=self.request.remote_addr, port=port)
     p.put()
 
@@ -56,7 +56,7 @@ class NewLobby(webapp.RequestHandler):
     pid = self.request.get('p', default_value='')
     if pid is '':
       pid = hashlib.sha224(self.request.url + self.request.remote_addr
-                         + str(random.random())).hexdigest()
+                         + str(random.random())).hexdigest()[0:6]
       p = Peer(pid=pid, ip=self.request.remote_addr, port=port)
       p.put()
     else:
@@ -66,7 +66,7 @@ class NewLobby(webapp.RequestHandler):
         return
 
     lid = hashlib.sha224(self.request.url + self.request.remote_addr
-                       + str(random.random())).hexdigest()
+                       + str(random.random())).hexdigest()[0:6]
     l = Lobby(lid=lid)
     l.put()
 
@@ -106,7 +106,7 @@ class JoinLobby(webapp.RequestHandler):
     pid = self.request.get('p', default_value='')
     if pid is '':
       pid = hashlib.sha224(self.request.url + self.request.remote_addr
-                         + str(random.random())).hexdigest()
+                         + str(random.random())).hexdigest()[0:6]
       p = Peer(pid=pid, ip=self.request.remote_addr, port=port)
       p.put()
     else:
@@ -114,13 +114,6 @@ class JoinLobby(webapp.RequestHandler):
       if p is None:
         self.response.out.write("Error: invalid pid")
         return
-
-    ap = db.GqlQuery("SELECT * FROM ActivePeers WHERE lid = :1 AND pid = :2",
-                     l.lid, p.pid).get()
-    if ap is None:
-      self.response.out.write("Adding to aps<br/>")
-      ap = ActivePeers(lid=l.lid, pid=p.pid)
-      ap.put()
 
     self.response.out.write("<?xml version=\"1.0\"?>\n")
     self.response.out.write("<eyeunite>\n")
@@ -146,7 +139,7 @@ class ListLobby(webapp.RequestHandler):
 
     self.response.out.write("<?xml version=\"1.0\"?>\n")
     self.response.out.write("<eyeunite>\n")
-    self.response.out.write("  <lid>" + l.lid + "</lid>\n")
+    self.response.out.write("  <lid>" + lid + "</lid>\n")
 
     activepeers = db.GqlQuery("SELECT * FROM ActivePeers WHERE lid = :1", lid)
     for ap in activepeers:

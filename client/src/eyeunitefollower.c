@@ -19,7 +19,7 @@ const char* endpoint = "tcp://*:55555";
 char my_pid[EU_TOKENSTRLEN];
 char my_addr[EU_ADDRSTRLEN];
 int my_bw;
-int my_port;
+char* my_port;
 
 struct peer_node
 {
@@ -75,7 +75,7 @@ void change_upstream_peer(struct peer_info up_peer)
 {
   upstream_peer = up_peer;
   char temp[EU_ADDRSTRLEN*4];
-  snprintf (temp, EU_ADDRSTRLEN*4, "tcp://%s:%u", up_peer.addr, up_peer.port);
+  snprintf (temp, EU_ADDRSTRLEN*4, "tcp://%s:%s", up_peer.addr, up_peer.port);
   upstream_sock = fn_initzmq (my_pid, temp);
 }
 
@@ -138,11 +138,11 @@ int main(int argc, char* argv[])
     return -1;
   }
   lobby_token = argv[1];
-  my_port = atoi(argv[2]);
+  my_port = argv[2];
   my_bw = atoi(argv[3]);
 
   // Bootstrap
-  if(!(b = bootstrap_init(APP_ENGINE, 8080, my_pid, my_addr)))
+  if(!(b = bootstrap_init(APP_ENGINE, "8080", my_pid, my_addr)))
   {
     print_error("Failed intitializing bootstrap!\n");
     return 1;
@@ -164,7 +164,7 @@ int main(int argc, char* argv[])
   my_peer_info = malloc (sizeof *my_peer_info);
   memcpy(my_peer_info->pid, my_pid, EU_TOKENSTRLEN);
   memcpy(my_peer_info->addr, my_addr, EU_ADDRSTRLEN);
-  my_peer_info->port = my_port;
+  memcpy(my_peer_info->port, my_port, EU_PORTSTRLEN);
   my_peer_info->peerbw = my_bw;
   print_error ("aok");
 
@@ -177,7 +177,7 @@ int main(int argc, char* argv[])
   print_error ("source pid: %s", source_info.pid);
   print_error ("source ip: %s", source_info.addr);
   char temp[EU_ADDRSTRLEN*4];
-  snprintf (temp, EU_ADDRSTRLEN*4, "tcp://%s:%u", source_info.addr, source_info.port);
+  snprintf (temp, EU_ADDRSTRLEN*4, "tcp://%s:%s", source_info.addr, source_info.port);
   print_error ("tmp addr: %s", temp);
   upstream_sock = fn_initzmq (my_pid, temp);
   fn_sendmsg(upstream_sock, REQ_JOIN, my_peer_info);

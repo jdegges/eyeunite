@@ -16,7 +16,7 @@ main (void)
 
   bootstrap_global_init ();
 
-  bs = bootstrap_init ("http://eyeunite.appspot.com", 0, pid_token, addr);
+  bs = bootstrap_init ("http://eyeunite.appspot.com", "80", pid_token, addr);
   if (NULL == bs) {
     print_error ("bootstrap_init");
     return 1;

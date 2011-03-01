@@ -1,7 +1,8 @@
 #ifndef EU_EASYUDP_H
 #define EU_EASYUDP_H
 
-#include <netdb.h>
+#include "eyeunite.h"
+
 #include <stdlib.h>
 
 enum eu_sock_type
@@ -12,9 +13,6 @@ enum eu_sock_type
 
 struct eu_socket;
 
-#define EU_PORTSTRLEN 7
-#define EU_ADDRSTRLEN INET6_ADDRSTRLEN
-#define EU_PACKETLEN ((1<<16)-1-8-20)
 
 struct eu_socket *
 eu_socket (enum eu_sock_type type);

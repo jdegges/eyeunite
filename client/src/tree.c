@@ -55,7 +55,7 @@ static struct node_t *nodealloc(void)
   return temp;
 }
 
-struct tree_t *initialize(void* socket, int streambw, int peerbw, char pid[], char addr[], uint16_t port, int debug_mode)
+struct tree_t *initialize(void* socket, int streambw, int peerbw, char pid[], char addr[], char port[], int debug_mode)
 {
   struct tree_t *tree;
 
@@ -73,10 +73,10 @@ struct tree_t *initialize(void* socket, int streambw, int peerbw, char pid[], ch
   tree->streambw = streambw;
   tree->debug = debug_mode;
   tree->root->p_info.peerbw = peerbw;
-  tree->root->p_info.port = port;
   tree->root->max_c = peerbw / streambw;
   strcpy(tree->root->p_info.pid, pid);
   strcpy(tree->root->p_info.addr, addr);
+  strcpy(tree->root->p_info.port, port);
 
   return tree;
 }
@@ -121,7 +121,7 @@ static struct node_t *locateEmpty(struct node_t *root)
 
 }
 
-int addPeer(struct tree_t *tree, int peerbw, char pid[], char addr[], uint16_t port)
+int addPeer(struct tree_t *tree, int peerbw, char pid[], char addr[], char port[])
 {
   struct node_t *parent;
   struct node_t *new;
@@ -137,11 +137,11 @@ int addPeer(struct tree_t *tree, int peerbw, char pid[], char addr[], uint16_t p
     return -1;
 
   new->p_info.peerbw = peerbw;
-  new->p_info.port = port;
   new->max_c = peerbw / tree->streambw;
   new->parent = parent;
   strcpy(new->p_info.pid, pid);
   strcpy(new->p_info.addr, addr);
+  strcpy(new->p_info.port, port);
 
   list_add (parent->children, (void*)new);
 
