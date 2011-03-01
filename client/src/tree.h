@@ -19,7 +19,7 @@ initialize(void* socket, int streambw, int peerbw, char pid[], char addr[], char
  * Used to add followers to the tree.
  * Returns  0 if peer was added.
  * Returns -1 if memory error.
- * Returns -2 if no empty slots found.
+ * Returns -2 if no empty slots found and could not switch with a leaf, or getLeaf had error (should not happen)
  */
 int 
 addPeer(struct tree_t *tree, int peerbw, char pid[], char addr[], char port[]);

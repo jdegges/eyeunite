@@ -84,7 +84,8 @@ struct tree_t *initialize(void* socket, int streambw, int peerbw, char pid[], ch
 /*
 * Used to find best open spot in the tree.
 * Returns a pointer to the future parent if empty spot is found.
-* Otherwise returns NULL if memory error or root if no empty spots found.-
+* Otherwise returns NULL if memory error or root if no empty spots found.
+* For no empty spots, must check that root doesnt have empty spot afterwards.
 */
 static struct node_t *locateEmpty(struct node_t *root)
 {
@@ -121,16 +122,74 @@ static struct node_t *locateEmpty(struct node_t *root)
 
 }
 
+/*
+* Used to detach a node from its parent.
+*/
+static void clearParent(struct node_t *remove)
+{
+  struct node_t *parent = remove->parent;
+
+  list_remove_data (parent->children, (void*)remove);
+}
+
+/*
+* Used to find a leaf node if there are no empty spots
+*/
+static struct node_t *getLeaf(struct node_t *root)
+{
+  struct node_t *find = NULL;
+  struct alpha_queue *queue;
+  struct node_t *temp;
+  int i;
+
+  queue = alpha_queue_new();
+  temp = root;
+
+  while(find == NULL) {
+    if( temp != root && temp->max_c == 0)
+      find = temp;
+    else{
+      for ( i = 0; i < list_count (temp->children); i++){
+        if( alpha_queue_push(queue, list_get (temp->children, i)) == false){
+          print_error( "out of memory");
+          alpha_queue_free(queue);
+          return NULL;
+        }
+      }
+      if(( temp = (struct node_t*)alpha_queue_pop( queue)) == NULL){
+        print_error( "catastrophic: no leaf found");
+        alpha_queue_free(queue);
+        return root;
+      }
+    }  
+  }
+
+  alpha_queue_free(queue);
+
+  return find;
+}
+
 int addPeer(struct tree_t *tree, int peerbw, char pid[], char addr[], char port[])
 {
   struct node_t *parent;
   struct node_t *new;
+  struct node_t *leaf = NULL;
 
   parent = locateEmpty( tree->root); //might want to optimize when cant find empty slot, unless still no empty spot in optimization
   if( parent == NULL)
     return -1;
   if(( parent == tree->root) && (tree->root->max_c == list_count( tree->root->children)))
-    return -2;//todo: need to switch with leaf, if max_c > 0, otherwise send sorry!
+  {
+    if ( (peerbw / tree->streambw) == 0)
+      return -2; //out of luck, cant switch cus old leaf will have to drop
+
+    leaf = getLeaf( tree->root);
+    if(leaf == NULL)
+      return -1;
+    if(leaf == tree->root) //no leaf found, should never happen
+      return -2;
+    parent = leaf->parent;
+  }
 
   new = nodealloc();
   if( new == NULL)
@@ -143,11 +202,25 @@ int addPeer(struct tree_t *tree, int peerbw, char pid[], char addr[], char port[
   strcpy(new->p_info.addr, addr);
   strcpy(new->p_info.port, port);
 
+  if (leaf != NULL)
+  {
+    list_add (new->children, (void*)leaf);
+    clearParent(leaf);
+    leaf->parent = new;
+  }
+
   list_add (parent->children, (void*)new);
 
-  if (tree->debug == 0) {
-    sn_sendmsg ( tree->socket, parent->p_info.pid, FEED_NODE, &(new->p_info));
+  if (tree->debug == 0) //maybe switch around order to avoid a slowdown if parent cant feed both (might initiate a peer move request)
+  {
     sn_sendmsg ( tree->socket, new->p_info.pid, FOLLOW_NODE, &(parent->p_info));
+    sn_sendmsg ( tree->socket, parent->p_info.pid, FEED_NODE, &(new->p_info));
+    if ( leaf != NULL)
+    {
+      sn_sendmsg ( tree->socket, leaf->p_info.pid, FOLLOW_NODE, &(new->p_info));
+      sn_sendmsg ( tree->socket, new->p_info.pid, FEED_NODE, &(leaf->p_info));
+      sn_sendmsg ( tree->socket, parent->p_info.pid, DROP_NODE, &(leaf->p_info));
+    }
   }
   return 0;
 }
@@ -195,15 +268,6 @@ static struct node_t *findPeer(struct node_t *root, char pid[])
   return find;
 }
 
-/*
-* Used to detach a node from its parent.
-*/
-static void clearParent(struct node_t *remove)
-{
-  struct node_t *parent = remove->parent;
-
-  list_remove_data (parent->children, (void*)remove);
-}
 
 
 int removePeer(struct tree_t *tree, char pid[])
@@ -219,7 +283,9 @@ int removePeer(struct tree_t *tree, char pid[])
   if(remove == tree->root)
     return 0;
 
-  
+  // find a peer in subtree to take my spot.. (most open spots)
+  // if enough open spots, give all children to subtree find
+  // if not, move enough children to fit the rest in subtree find
   while ( list_count (remove->children) > 0){
     child = (struct node_t*)list_get( remove->children, 0);
     movePeer(tree, child->p_info.pid);
@@ -253,7 +319,7 @@ int movePeer(struct tree_t *tree, char pid[])
 
   clearParent(move);
 
-  newparent = locateEmpty(tree->root);
+  newparent = locateEmpty(tree->root); //if no empty. should switch with a leaf again (pending this one can handle more children) (on 2nd if below, like addPeer)
   if( newparent == NULL)
     return -1;
   if(( newparent == tree->root) && (tree->root->max_c == list_count( tree->root->children)))
