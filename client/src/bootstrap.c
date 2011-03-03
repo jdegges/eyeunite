@@ -638,4 +638,7 @@ error:
 }
 
 int
-bootstrap_lobby_leave (struct bootstrap *b);
+bootstrap_lobby_leave (struct bootstrap *b)
+{
+  return 0;
+}
