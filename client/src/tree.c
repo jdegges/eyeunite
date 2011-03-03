@@ -224,7 +224,6 @@ int addPeer(struct tree_t *tree, int peerbw, char pid[], char addr[], char port[
   strcpy(new->p_info.addr, addr);
   strcpy(new->p_info.port, port);
 
-  // TODO: switch up the node on basis of max_c
   int extra = (leaf == NULL ? 0 : 1); // must account for leaf also
   replace = switchUp(tree->root, new, extra);
 
@@ -487,7 +486,7 @@ void printTree(struct tree_t *tree)
 	queue = alpha_queue_new();
 	
 	alpha_queue_push( queue, (void*) tree->root);
-  fprintf(stdout, "\n\n\n\n\n\n");
+  fprintf(stdout, "\n\n");
 
 	while(( print = (struct node_t*)alpha_queue_pop(queue)) != NULL) {
 		fprintf(stdout, "Node PID: %s\n", print->p_info.pid);
