@@ -16,7 +16,7 @@
 struct peer_info upstream_peer;
 void* upstream_sock = NULL;
 struct eu_socket* up_eu_sock = NULL;
-struct peer_node* downstream_peers;
+struct peer_node* downstream_peers = NULL;
 size_t num_downstream_peers;
 pthread_mutex_t downstream_peers_mutex = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t upstream_peer_mutex = PTHREAD_MUTEX_INITIALIZER;
@@ -147,8 +147,7 @@ void change_upstream_peer(struct peer_info up_peer)
   // Change global variables
   upstream_sock = new_upstream_sock;
   up_eu_sock = new_up_eu_sock;
-  upstream_peer = up_peer;
-  
+  memcpy(&upstream_peer, &up_peer, sizeof(struct peer_info));
 }
 
 void* dataThread(void* arg)
@@ -304,6 +303,7 @@ int main(int argc, char* argv[])
     timestamps = true;
 
   // Bootstrap
+  bootstrap_global_init();
   if(!(b = bootstrap_init(APP_ENGINE, my_port, my_pid, my_addr)))
   {
     print_error("Failed intitializing bootstrap!\n");
@@ -327,7 +327,7 @@ int main(int argc, char* argv[])
   memcpy(my_peer_info->port, my_port, EU_PORTSTRLEN);
   my_peer_info->peerbw = my_bw;
   // Finish initialization
-  upstream_peer = source_info;
+  memcpy(&upstream_peer, &source_info, sizeof(struct peer_info));
   downstream_peers = NULL;
   num_downstream_peers = 0;
   packet_table = g_hash_table_new(g_int_hash, g_int_equal);
@@ -357,5 +357,7 @@ int main(int argc, char* argv[])
   if(output_file != stdout)
     fclose(output_file);
 
+  bootstrap_cleanup(b);
+  bootstrap_global_cleanup();
   return 0;
 }
