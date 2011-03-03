@@ -14,8 +14,8 @@
 
 // Global variables for threads
 struct peer_info upstream_peer;
-void* upstream_sock;
-struct eu_socket* up_eu_sock;
+void* upstream_sock = NULL;
+struct eu_socket* up_eu_sock = NULL;
 struct peer_node* downstream_peers;
 size_t num_downstream_peers;
 pthread_mutex_t downstream_peers_mutex = PTHREAD_MUTEX_INITIALIZER;
