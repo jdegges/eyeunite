@@ -280,14 +280,17 @@ int main(int argc, char* argv[])
   lobby_token = argv[1];
   my_port = atoi(argv[2]);
   my_bw = atoi(argv[3]);
+  output_file = stdout;
+  timestamps = false;
   if(argc >= 5)
-    output_file = fopen(argv[4], "w");
-  else
-    output_file = stdout;
+  {
+    if(strcmp(argv[4], "--debug") == 0)
+      timestamps == true;
+    else
+      output_file = fopen(argv[4], "w");
+  }
   if(argc >= 6 && (strcomp(argv[5], "--debug") == 0))
     timestamps = true;
-  else
-    timestamps = false;
 
   // Bootstrap
   if(!(b = bootstrap_init(APP_ENGINE, 8080, my_pid, my_addr)))
