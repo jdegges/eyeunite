@@ -1,0 +1,191 @@
+
+
+
+
+
+
+Node PID: addP
+Node # of children: 2
+Node max children: 2
+Node Child: add:1
+Node Child: add:2
+
+
+Node PID: add:1
+Node # of children: 2
+Node max children: 2
+Node Parent: addP
+Node Child: add:3
+Node Child: add:4
+
+
+Node PID: add:2
+Node # of children: 1
+Node max children: 2
+Node Parent: addP
+Node Child: add:5
+
+
+Node PID: add:3
+Node # of children: 0
+Node max children: 2
+Node Parent: add:1
+
+
+Node PID: add:4
+Node # of children: 0
+Node max children: 2
+Node Parent: add:1
+
+
+Node PID: add:5
+Node # of children: 0
+Node max children: 2
+Node Parent: add:2
+
+
+
+
+
+
+
+
+Node PID: addup
+Node # of children: 2
+Node max children: 2
+Node Child: add:5
+Node Child: add:6
+
+
+Node PID: add:5
+Node # of children: 1
+Node max children: 3
+Node Parent: addup
+Node Child: add:2
+
+
+Node PID: add:6
+Node # of children: 3
+Node max children: 6
+Node Parent: addup
+Node Child: add:3
+Node Child: add:1
+Node Child: add:4
+
+
+Node PID: add:2
+Node # of children: 0
+Node max children: 1
+Node Parent: add:5
+
+
+Node PID: add:3
+Node # of children: 0
+Node max children: 2
+Node Parent: add:6
+
+
+Node PID: add:1
+Node # of children: 0
+Node max children: 2
+Node Parent: add:6
+
+
+Node PID: add:4
+Node # of children: 0
+Node max children: 4
+Node Parent: add:6
+
+
+
+
+
+
+
+
+Node PID: nospot
+Node # of children: 2
+Node max children: 2
+Node Child: add:2
+Node Child: add:3
+
+
+Node PID: add:2
+Node # of children: 0
+Node max children: 0
+Node Parent: nospot
+
+
+Node PID: add:3
+Node # of children: 1
+Node max children: 1
+Node Parent: nospot
+Node Child: add:1
+
+
+Node PID: add:1
+Node # of children: 0
+Node max children: 0
+Node Parent: add:3
+
+
+
+
+
+
+
+
+Node PID: switch
+Node # of children: 2
+Node max children: 2
+Node Child: add:2
+Node Child: add:7
+
+
+Node PID: add:2
+Node # of children: 1
+Node max children: 1
+Node Parent: switch
+Node Child: add:5
+
+
+Node PID: add:7
+Node # of children: 3
+Node max children: 4
+Node Parent: switch
+Node Child: add:6
+Node Child: add:1
+Node Child: add:4
+
+
+Node PID: add:5
+Node # of children: 0
+Node max children: 0
+Node Parent: add:2
+
+
+Node PID: add:6
+Node # of children: 1
+Node max children: 1
+Node Parent: add:7
+Node Child: add:3
+
+
+Node PID: add:1
+Node # of children: 0
+Node max children: 2
+Node Parent: add:7
+
+
+Node PID: add:4
+Node # of children: 0
+Node max children: 0
+Node Parent: add:7
+
+
+Node PID: add:3
+Node # of children: 0
+Node max children: 0
+Node Parent: add:6
+
+
