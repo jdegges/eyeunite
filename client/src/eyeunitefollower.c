@@ -122,11 +122,11 @@ void drop_downstream_peer(struct peer_node* new_peer)
   return;
 }
 
-void change_upstream_peer(struct peer_info up_peer)
+void change_upstream_peer(struct peer_info* up_peer)
 {
   // Connect to new upstream peer first
   char temp[EU_ADDRSTRLEN*4];
-  snprintf (temp, EU_ADDRSTRLEN*4, "tcp://%s:%s", up_peer.addr, up_peer.port);
+  snprintf (temp, EU_ADDRSTRLEN*4, "tcp://%s:%s", up_peer->addr, up_peer->port);
   void* new_upstream_sock = fn_initzmq (my_pid, temp);
   void* new_up_eu_sock = eu_socket(EU_PULL);
   struct peer_info my_peer_info;
@@ -147,7 +147,7 @@ void change_upstream_peer(struct peer_info up_peer)
   // Change global variables
   upstream_sock = new_upstream_sock;
   up_eu_sock = new_up_eu_sock;
-  memcpy(&upstream_peer, &up_peer, sizeof(struct peer_info));
+  memcpy(&upstream_peer, up_peer, sizeof(struct peer_info));
 }
 
 void* dataThread(void* arg)
@@ -214,7 +214,7 @@ void* statusThread(void* arg)
       print_error("FOLLOW_NODE\n");
       print_error("Changing upstream peer %s\n", pi.pid);
       pthread_mutex_lock(&upstream_peer_mutex);
-      change_upstream_peer(pi);
+      change_upstream_peer(&pi);
       pthread_mutex_unlock(&upstream_peer_mutex);
     }
     else
@@ -335,7 +335,7 @@ int main(int argc, char* argv[])
   // Initiate connection to source
   print_error ("source pid: %s", upstream_peer.pid);
   print_error ("source ip: %s:%s", upstream_peer.addr, upstream_peer.port);
-  change_upstream_peer(upstream_peer);
+  change_upstream_peer(&upstream_peer);
 
   pthread_t status_thread;
   pthread_t data_thread;
@@ -359,5 +359,6 @@ int main(int argc, char* argv[])
 
   bootstrap_cleanup(b);
   bootstrap_global_cleanup();
+  free(my_peer_info);
   return 0;
 }
