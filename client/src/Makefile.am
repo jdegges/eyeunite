@@ -31,6 +31,7 @@ bin_PROGRAMS += eyeunitefollower
 eyeunitefollower_SOURCES = eyeunitefollower.c
 eyeunitefollower_LDADD = $(top_srcdir)/src/libfollowernode.la
 eyeunitefollower_LDADD += $(top_srcdir)/src/libbootstrap.la
+eyeunitefollower_LDADD += $(top_srcdir)/src/libeasyudp.la
 eyeunitefollower_LDADD += -lglib-2.0
 eyeunitefollower_CFLAGS = -I/usr/include/glib-2.0 -I/usr/lib/glib-2.0/include 
 

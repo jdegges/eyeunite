@@ -34,7 +34,7 @@ GHashTable* packet_table;
 struct peer_node
 {
   struct peer_info peer_info;
-  struct eu_socket eu_sock;
+  struct eu_socket* eu_sock;
   struct peer_node* next;
 };
 
@@ -247,8 +247,8 @@ void* displayThread(void* arg)
         pthread_mutex_unlock(&packet_buffer_mutex);
 
         // "Display" packet
-        char temp[EU_PACKETLEN];
-        snpritnf(temp, EU_PACKETLEN*2, "Packet [%lld]: %s", packet->seqnum, packet->data);
+        char temp[EU_PACKETLEN*2];
+        snprintf(temp, EU_PACKETLEN*2, "Packet [%lld]: %s", packet->seqnum, packet->data);
         if(timestamps)
           fwrite(temp, 1, EU_PACKETLEN*2, output_file);
         else
@@ -297,7 +297,7 @@ int main(int argc, char* argv[])
     else
       output_file = fopen(argv[4], "w");
   }
-  if(argc >= 6 && (strcomp(argv[5], "--debug") == 0))
+  if(argc >= 6 && (strcmp(argv[5], "--debug") == 0))
     timestamps = true;
 
   // Bootstrap
