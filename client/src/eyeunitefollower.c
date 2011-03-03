@@ -320,28 +320,22 @@ int main(int argc, char* argv[])
     return 1;
   }
 
-  print_error ("aok");
-
   // Set my peer_info
   my_peer_info = malloc (sizeof *my_peer_info);
   memcpy(my_peer_info->pid, my_pid, EU_TOKENSTRLEN);
   memcpy(my_peer_info->addr, my_addr, EU_ADDRSTRLEN);
   memcpy(my_peer_info->port, my_port, EU_PORTSTRLEN);
   my_peer_info->peerbw = my_bw;
-  print_error ("aok");
-
   // Finish initialization
   upstream_peer = source_info;
   downstream_peers = NULL;
   num_downstream_peers = 0;
-  print_error ("aok");
   packet_table = g_hash_table_new(g_int_hash, g_int_equal);
 
   // Initiate connection to source
   print_error ("source pid: %s", upstream_peer.pid);
   print_error ("source ip: %s:%s", upstream_peer.addr, upstream_peer.port);
   change_upstream_peer(upstream_peer);
-  print_error ("aok");
 
   pthread_t status_thread;
   pthread_t data_thread;
