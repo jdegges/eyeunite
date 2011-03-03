@@ -13,23 +13,23 @@
 #include "time.h"
 
 // Global variables for threads
-struct peer_info* upstream_peer;
+struct peer_info* upstream_peer = NULL;
 void* upstream_sock = NULL;
 struct eu_socket* up_eu_sock = NULL;
 struct peer_node* downstream_peers = NULL;
-size_t num_downstream_peers;
+size_t num_downstream_peers = 0;
 pthread_mutex_t downstream_peers_mutex = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t upstream_peer_mutex = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t packet_buffer_mutex = PTHREAD_MUTEX_INITIALIZER;
 char my_pid[EU_TOKENSTRLEN];
 char my_addr[EU_ADDRSTRLEN];
 char my_port[EU_PORTSTRLEN];
-int my_bw;
+int my_bw = 1;
 int seqnum = -1;
-FILE* output_file;
-bool timestamps;
+FILE* output_file = NULL;
+bool timestamps = false;
 
-GHashTable* packet_table;
+GHashTable* packet_table = NULL;
 
 struct peer_node
 {
@@ -279,11 +279,11 @@ int main(int argc, char* argv[])
 {
   int i;
   struct bootstrap* b;
-  char* lobby_token;
-  void* sock;
+  char* lobby_token = NULL;
+  void* sock = NULL;
 
   // Follower peer info variables
-  struct peer_info* my_peer_info;
+  struct peer_info* my_peer_info = NULL;
 
   if(argc < 4)
   {
