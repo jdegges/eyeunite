@@ -162,7 +162,6 @@ static struct node_t *findPeer(struct node_t *root, char pid[])
     }
 
     if(( temp = (struct node_t*)alpha_queue_pop(queue)) == NULL && find == NULL){
-      fprintf(stderr, "tree: could not find peer\n");
       alpha_queue_free(queue);
       return root;
     }
@@ -246,7 +245,6 @@ int addPeer(struct tree_t *tree, int peerbw, char pid[], char addr[], char port[
     return -1;
   if (temp != tree->root)
     return 0;
-  //todo, make sure it isnt already in tree
 
   // try to find empty slot to attach to, or switch with a leaf if no empty spot
   parent = locateEmpty( tree->root);
