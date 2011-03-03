@@ -295,7 +295,7 @@ int main(int argc, char* argv[])
     if(strcmp(argv[4], "--debug") == 0)
       timestamps == true;
     else
-      output_file = fopen(argv[4], "w");
+      output_file = fopen(argv[4], "ab");
   }
   if(argc >= 6 && (strcmp(argv[5], "--debug") == 0))
     timestamps = true;
