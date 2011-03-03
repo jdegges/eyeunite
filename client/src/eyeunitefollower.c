@@ -15,7 +15,7 @@
 // Global variables for threads
 struct peer_info upstream_peer;
 void* upstream_sock;
-struct eu_socket* up_eu_sock
+struct eu_socket* up_eu_sock;
 struct peer_node* downstream_peers;
 size_t num_downstream_peers;
 pthread_mutex_t downstream_peers_mutex = PTHREAD_MUTEX_INITIALIZER;
@@ -23,8 +23,8 @@ pthread_mutex_t upstream_peer_mutex = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t packet_buffer_mutex = PTHREAD_MUTEX_INITIALIZER;
 char my_pid[EU_TOKENSTRLEN];
 char my_addr[EU_ADDRSTRLEN];
+char my_port[EU_PORTSTRLEN];
 int my_bw;
-int my_port;
 int seqnum = -1;
 FILE* output_file;
 bool timestamps;
@@ -42,12 +42,12 @@ struct peer_node* peer_node(struct peer_info node_params)
 {
   struct peer_node* pn = (struct peer_node*)malloc(sizeof(struct peer_node));
   pn->peer_info = node_params;
-  pn->sock = eu_socket(EU_PUSH);
-  if(eu_connect(pn->sock, node_params.addr, node_params.port))
+  pn->eu_sock = eu_socket(EU_PUSH);
+  if(eu_connect(pn->eu_sock, node_params.addr, node_params.port))
   {
     print_error("Failed to conncet to peer %s", node_params.pid);
-	eu_close(pn->sock);
-	return NULL;
+	  eu_close(pn->eu_sock);
+	  return NULL;
   }
   pn->next = NULL;
   return pn;
@@ -60,7 +60,7 @@ void close_all_sockets()
   struct peer_node* node = downstream_peers;
   while(node != NULL)
   {
-    eu_close(node->sock);
+    eu_close(node->eu_sock);
     node = node->next;
   }
   return;
@@ -73,10 +73,10 @@ void push_data_to_peers(char* buf, size_t len)
   while(node != NULL)
   {
     // Blocking send
-    rc = eu_send(node->eu_sock, node->peer_info.addr, buf, len, 0);
+    rc = eu_send(node->eu_sock, buf, len, 0);
     if(rc < len)
     {
-      print_error("Failed to send data to peer %s", node->peer_info);
+      print_error("Failed to send data to peer %s", node->peer_info.pid);
       // Don't return, but continue to try to push data to other peers
     }
     node = node->next;
@@ -112,7 +112,7 @@ void drop_downstream_peer(struct peer_node* new_peer)
       {
         struct peer_node* targetNode = currNode->next;
         currNode->next = currNode->next->next;
-		eu_close(targetNode->sock);
+        eu_close(targetNode->eu_sock);
         free(targetNode);
         return;
       }
@@ -126,19 +126,23 @@ void change_upstream_peer(struct peer_info up_peer)
 {
   // Connect to new upstream peer first
   char temp[EU_ADDRSTRLEN*4];
-  snprintf (temp, EU_ADDRSTRLEN*4, "tcp://%s:%u", up_peer.addr, up_peer.port);
+  snprintf (temp, EU_ADDRSTRLEN*4, "tcp://%s:%s", up_peer.addr, up_peer.port);
   void* new_upstream_sock = fn_initzmq (my_pid, temp);
   void* new_up_eu_sock = eu_socket(EU_PULL);
+  struct peer_info my_peer_info;
+  memcpy(my_peer_info.pid, my_pid, EU_TOKENSTRLEN);
+  memcpy(my_peer_info.addr, my_addr, EU_ADDRSTRLEN);
+  memcpy(my_peer_info.port, my_port, EU_PORTSTRLEN);
+  my_peer_info.peerbw = my_bw;
   
-  fn_sendmsg(new_upstream_sock, REQ_JOIN, my_peer_info);
+  fn_sendmsg(new_upstream_sock, REQ_JOIN, &my_peer_info);
   eu_bind(new_up_eu_sock, my_addr, my_port);
   
   // Disconnect any old sockets to previous upstream peer
-  if(upstream_peer != NULL)
-  {
+  if(upstream_sock != NULL)
     fn_closesocket(upstream_sock);
-	eu_close(up_eu_sock);
-  }
+  if(up_eu_sock != NULL)
+	  eu_close(up_eu_sock);
   
   // Change global variables
   upstream_sock = new_upstream_sock;
@@ -154,7 +158,7 @@ void* dataThread(void* arg)
   while(1)
   {
     // Blocking recv
-    if((len = eu_recv(up_eu_sock, buf, EU_PACKETLEN, upstream_peer.addr, upstream_peer.port)) > 0)
+    if((len = eu_recv(up_eu_sock, buf, EU_PACKETLEN, 0, upstream_peer.addr, upstream_peer.port)) > 0)
     {
       struct data_pack* packet = (struct data_pack*)malloc(sizeof(struct data_pack));
       memcpy(packet, buf, len);
@@ -162,9 +166,13 @@ void* dataThread(void* arg)
       if(seqnum < 0)
         seqnum = packet->seqnum;
 
-      pthread_mutex_lock(&packet_buffer_mutex);
-      g_hash_table_insert(data_table, packet->seqnum, packet->data);
-      pthread_mutex_unlock(&packet_buffer_mutex);
+      // Drops out of order packets that are behind the display thread
+      if(!(packet->seqnum < seqnum))
+      {
+        pthread_mutex_lock(&packet_buffer_mutex);
+        g_hash_table_insert(packet_table, &(packet->seqnum), packet->data);
+        pthread_mutex_unlock(&packet_buffer_mutex);
+      }
 
       pthread_mutex_lock(&downstream_peers_mutex);
       push_data_to_peers(buf, len);
@@ -214,7 +222,7 @@ void* statusThread(void* arg)
   }
 }
 
-void displayThread()
+void* displayThread(void* arg)
 {
   bool sleepOnce = true;
   int delay_ms = 2; // Delay before "playback"
@@ -230,12 +238,12 @@ void displayThread()
         sleepOnce = false;
       }
       struct data_pack* packet;
-      packet = g_hash_table_lookup(data_table, seqnum);
+      packet = g_hash_table_lookup(packet_table, &seqnum);
       if(packet != NULL)
       {
         // Remove packet from hash table buffer
         pthread_mutex_lock(&packet_buffer_mutex);
-        g_hash_table_remove(data_table, seqnum);
+        g_hash_table_remove(packet_table, &seqnum);
         pthread_mutex_unlock(&packet_buffer_mutex);
 
         // "Display" packet
@@ -245,11 +253,11 @@ void displayThread()
           fwrite(temp, 1, EU_PACKETLEN*2, output_file);
         else
           fwrite(packet->data, 1, EU_PACKETLEN, output_file);
-        free(data_pack);
+        free(packet);
         start = clock();
         seqnum++;
       }
-      else if(clock() > start + timout * CLOCKS_PER_SEC * 1000);
+      else if(clock() > start + timeout_ms * CLOCKS_PER_SEC * 1000);
       {
         start = clock();
         seqnum++;
@@ -278,7 +286,7 @@ int main(int argc, char* argv[])
     return -1;
   }
   lobby_token = argv[1];
-  my_port = atoi(argv[2]);
+  memcpy(my_port, argv[2], EU_PORTSTRLEN);
   my_bw = atoi(argv[3]);
   output_file = stdout;
   timestamps = false;
@@ -293,7 +301,7 @@ int main(int argc, char* argv[])
     timestamps = true;
 
   // Bootstrap
-  if(!(b = bootstrap_init(APP_ENGINE, 8080, my_pid, my_addr)))
+  if(!(b = bootstrap_init(APP_ENGINE, my_port, my_pid, my_addr)))
   {
     print_error("Failed intitializing bootstrap!\n");
     return 1;
@@ -315,7 +323,7 @@ int main(int argc, char* argv[])
   my_peer_info = malloc (sizeof *my_peer_info);
   memcpy(my_peer_info->pid, my_pid, EU_TOKENSTRLEN);
   memcpy(my_peer_info->addr, my_addr, EU_ADDRSTRLEN);
-  my_peer_info->port = my_port;
+  memcpy(my_peer_info->port, my_port, EU_PORTSTRLEN);
   my_peer_info->peerbw = my_bw;
   print_error ("aok");
 
