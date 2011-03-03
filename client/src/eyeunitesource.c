@@ -3,6 +3,7 @@
 #include <stdlib.h>
 #include <signal.h>
 #include <string.h>
+#include <unistd.h>
 
 #include "alpha_queue.h"
 #include "bootstrap.h"
@@ -95,6 +96,11 @@ static void* data_thread(void *vptr) {
       return NULL;
     }
 
+    while (0 == countRootChildren(tree)) {
+      usleep (200000);
+      // do nothing.
+    }
+
     uint64_t i;
     for (i = 0; i < countRootChildren(tree); i++) {
       struct peer_info *pi = getRootChild (tree, i);
@@ -129,7 +135,7 @@ static void* data_thread(void *vptr) {
 
 int main(int argc, char* argv[]) {
 
-  if (argc != 4) {
+  if (argc != 5) {
     printf ("Usage:\n");
     printf ("./eyeunitesource <ipaddress> <listenport> <bandwidth> <media file>\n");
     return;
