@@ -39,7 +39,7 @@ removePeer(struct tree_t *tree, char pid[]);
  * Returns  0 if peer was moved successfully.
  * Returns -1 if memory error.
  * Returns -2 if peer not found in tree.
- * Returns -3 if no empty slots found.
+ * Returns -3 if no empty slots found and trying to move a leaf
  */
 int
 movePeer(struct tree_t *tree, char pid[]);

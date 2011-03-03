@@ -231,7 +231,6 @@ int addPeer(struct tree_t *tree, int peerbw, char pid[], char addr[], char port[
   if ( leaf != NULL)
     clearParent(leaf);
 
-  //TODO: after switchup
   if(replace != new)
   {
     clearParent(replace);
@@ -273,7 +272,7 @@ int addPeer(struct tree_t *tree, int peerbw, char pid[], char addr[], char port[
       struct node_t *child = list_get (new->children, i);
       sn_sendmsg ( tree->socket, child->p_info.pid, FOLLOW_NODE, &(new->p_info));
       sn_sendmsg ( tree->socket, new->p_info.pid, FEED_NODE, &(child->p_info));
-      if (replace != NULL && child != leaf)
+      if (replace != new && child != leaf)
         sn_sendmsg (tree->socket, replace->p_info.pid, DROP_NODE, &(child->p_info));
     }
 
@@ -364,6 +363,8 @@ int movePeer(struct tree_t *tree, char pid[])
   struct node_t *newparent;
   struct node_t *move;
   struct node_t *oldparent;
+  struct node_t *leaf = NULL;
+  struct node_t *replace;
 
   move = findPeer(tree->root, pid);
 
@@ -374,24 +375,79 @@ int movePeer(struct tree_t *tree, char pid[])
 
   oldparent = move->parent;
   oldparent->max_c = list_count (oldparent->children) - 1;
-
   clearParent(move);
 
-  newparent = locateEmpty(tree->root); //if no empty. should switch with a leaf again (pending this one can handle more children) (on 2nd if below, like addPeer)
-  if( newparent == NULL)
+  newparent = locateEmpty(tree->root);
+  if (newparent == NULL)
     return -1;
-  if(( newparent == tree->root) && (tree->root->max_c == list_count( tree->root->children)))
-    return -3;
+  if ((newparent == tree->root) && (tree->root->max_c == list_count( tree->root->children)))
+  {
+    if ((move->p_info.peerbw / tree->streambw) == 0 || list_count (move->children) == move->max_c) //might want to drop leaf if he has full children list
+      return -3;
 
-  list_add (newparent->children, (void*)move);
+    leaf = getLeaf (tree->root);
+    if (leaf == NULL)
+      return -1;
+    if (leaf == tree->root) //no leaf found, should never happen, since we call locateEmpty beforehand
+      return -3;
+
+    newparent = leaf->parent;
+  }
+
   move->parent = newparent;
 
-  if (tree->debug == 0) {
-    sn_sendmsg ( tree->socket, newparent->p_info.pid, FEED_NODE, &(move->p_info));
-    sn_sendmsg ( tree->socket, move->p_info.pid, FOLLOW_NODE, &(newparent->p_info));
-    sn_sendmsg ( tree->socket, oldparent->p_info.pid, DROP_NODE, &(move->p_info));
+  int extra = list_count(move->children) + (leaf == NULL ? 0 : 1); // must account for current # chlidren and possible leaf
+  replace = switchUp(tree->root, move, extra);
+
+  if ( leaf != NULL)
+    clearParent(leaf);
+
+  if(replace != move)
+  {
+    clearParent(replace);
+    move->parent = replace->parent;
+    replace->parent = move;
+
+    list_add (move->children, (void*)replace);
+    while (list_count (replace->children) > 0)
+    {
+      struct node_t *child = (struct node_t*)list_get (replace->children, 0);
+      list_add (move->children, (void*)child);
+      list_remove_item (replace->children, 0);
+      child->parent = move;
+    }
+
   }
-  // todo: maybe send to move to drop oldparent
+
+  list_add (move->parent->children, (void*)move);
+
+  if (leaf != NULL)
+  {
+    list_add (move->children, (void*)leaf);
+    leaf->parent = move;
+  }
+
+  if (tree->debug == 0) {
+    sn_sendmsg ( tree->socket, move->parent->p_info.pid, FEED_NODE, &(move->p_info));
+    sn_sendmsg ( tree->socket, move->p_info.pid, FOLLOW_NODE, &(move->parent->p_info));
+    sn_sendmsg ( tree->socket, oldparent->p_info.pid, DROP_NODE, &(move->p_info));
+
+    if ( replace != NULL)
+      sn_sendmsg ( tree->socket, move->parent->p_info.pid, DROP_NODE, &(replace->p_info));
+    
+    int i;
+    for (i = 0; i < list_count (move->children); i++)
+    {
+      struct node_t *child = list_get (move->children, i);
+      sn_sendmsg ( tree->socket, child->p_info.pid, FOLLOW_NODE, &(move->p_info));
+      sn_sendmsg ( tree->socket, move->p_info.pid, FEED_NODE, &(child->p_info));
+      if (replace != move && child != leaf)
+        sn_sendmsg (tree->socket, replace->p_info.pid, DROP_NODE, &(child->p_info));
+    }
+
+    if ( leaf != NULL)
+      sn_sendmsg ( tree->socket, newparent->p_info.pid, DROP_NODE, &(leaf->p_info));
+  }
 }
 
 /*
