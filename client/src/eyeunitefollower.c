@@ -308,6 +308,7 @@ int main(int argc, char* argv[])
 
   // Bootstrap
   bootstrap_global_init();
+  upstream_peer = malloc(sizeof(struct peer_info));
   if(!(b = bootstrap_init(APP_ENGINE, my_port, my_pid, my_addr)))
   {
     print_error("Bootstrap call: Failed intitializing bootstrap!\n");
