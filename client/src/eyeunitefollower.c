@@ -230,7 +230,7 @@ void* displayThread(void* arg)
   clock_t start;
   while(1)
   {
-    if(seqnum >= 0)
+    if(seqnum >= 0 && g_hash_table_size(packet_table) > 0)
     {
       if(sleepOnce)
       {
