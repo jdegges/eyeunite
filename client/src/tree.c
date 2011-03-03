@@ -244,7 +244,7 @@ int addPeer(struct tree_t *tree, int peerbw, char pid[], char addr[], char port[
   struct node_t *temp = findPeer(tree->root, pid);
   if (temp == NULL)
     return -1;
-  if (temp != root)
+  if (temp != tree->root)
     return 0;
   //todo, make sure it isnt already in tree
 
