@@ -109,7 +109,6 @@ static struct node_t *locateEmpty(struct node_t *root)
         }
       }
       if(( temp = (struct node_t*)alpha_queue_pop( queue)) == NULL){
-        print_error( "no empty slots on tree");
         alpha_queue_free(queue);
         return root;
       }
@@ -134,6 +133,7 @@ static void clearParent(struct node_t *remove)
 
 /*
 * Used to find a leaf node if there are no empty spots
+* Returns a leaf, or NULL if none found
 */
 static struct node_t *getLeaf(struct node_t *root)
 {
@@ -146,7 +146,7 @@ static struct node_t *getLeaf(struct node_t *root)
   temp = root;
 
   while(find == NULL) {
-    if( temp != root && temp->max_c == 0)
+    if( temp->max_c == 0)
       find = temp;
     else{
       for ( i = 0; i < list_count (temp->children); i++){
@@ -169,24 +169,46 @@ static struct node_t *getLeaf(struct node_t *root)
   return find;
 }
 
+/*
+* This function moves a new user up the tree until their parent supports more nodes than them, or under root
+* Returns the node it will replace, and new node will take them as a child.
+* Returns pointer to new input if it doesnt need to replace anyone.
+*/
+static struct node_t *switchUp(struct node_t *root, struct node_t *new, int extra)
+{
+  struct node_t *replace = new;
+
+  while(replace->parent->max_c < (new->max_c - extra))
+  {
+    if(replace->parent != root)
+      replace = replace->parent;
+    else
+      break;
+  }
+
+  return replace;
+}
+
 int addPeer(struct tree_t *tree, int peerbw, char pid[], char addr[], char port[])
 {
   struct node_t *parent;
   struct node_t *new;
+  struct node_t *replace;
   struct node_t *leaf = NULL;
 
-  parent = locateEmpty( tree->root); //might want to optimize when cant find empty slot, unless still no empty spot in optimization
+  // try to find empty slot to attach to, or switch with a leaf if no empty spot
+  parent = locateEmpty( tree->root);
   if( parent == NULL)
     return -1;
   if(( parent == tree->root) && (tree->root->max_c == list_count( tree->root->children)))
   {
     if ( (peerbw / tree->streambw) == 0)
-      return -2; //out of luck, cant switch cus old leaf will have to drop
+      return -2; // cant switch with leaf because new node cant support anyone either
 
     leaf = getLeaf( tree->root);
     if(leaf == NULL)
       return -1;
-    if(leaf == tree->root) //no leaf found, should never happen
+    if(leaf == tree->root) //no leaf found, should never happen, since we call locateEmpty beforehand
       return -2;
     parent = leaf->parent;
   }
@@ -202,25 +224,61 @@ int addPeer(struct tree_t *tree, int peerbw, char pid[], char addr[], char port[
   strcpy(new->p_info.addr, addr);
   strcpy(new->p_info.port, port);
 
+  // TODO: switch up the node on basis of max_c
+  int extra = (leaf == NULL ? 0 : 1); // must account for leaf also
+  replace = switchUp(tree->root, new, extra);
+
+  if ( leaf != NULL)
+    clearParent(leaf);
+
+  //TODO: after switchup
+  if(replace != new)
+  {
+    clearParent(replace);
+    new->parent = replace->parent;
+    replace->parent = new;
+
+    struct list *temp = new->children;
+    new->children = replace->children;
+    replace->children = temp;
+    list_add (new->children, (void*)replace);
+    int i;
+    for (i = 0; i < list_count (new->children); i++)
+    {
+      struct node_t *child = list_get (new->children, i);
+      child->parent = new;
+    }
+  }
+  
+  list_add (new->parent->children, (void*)new);
+
   if (leaf != NULL)
   {
     list_add (new->children, (void*)leaf);
-    clearParent(leaf);
     leaf->parent = new;
   }
 
-  list_add (parent->children, (void*)new);
-
-  if (tree->debug == 0) //maybe switch around order to avoid a slowdown if parent cant feed both (might initiate a peer move request)
+  //parent now points to leafs old parent (if there was a leaf)
+  if (tree->debug == 0)
   {
-    sn_sendmsg ( tree->socket, new->p_info.pid, FOLLOW_NODE, &(parent->p_info));
-    sn_sendmsg ( tree->socket, parent->p_info.pid, FEED_NODE, &(new->p_info));
-    if ( leaf != NULL)
+    sn_sendmsg ( tree->socket, new->p_info.pid, FOLLOW_NODE, &(new->parent->p_info));
+    sn_sendmsg ( tree->socket, new->parent->p_info.pid, FEED_NODE, &(new->p_info));
+
+    if ( replace != NULL)
+      sn_sendmsg ( tree->socket, new->parent->p_info.pid, DROP_NODE, &(replace->p_info));
+    
+    int i;
+    for (i = 0; i < list_count (new->children); i++)
     {
-      sn_sendmsg ( tree->socket, leaf->p_info.pid, FOLLOW_NODE, &(new->p_info));
-      sn_sendmsg ( tree->socket, new->p_info.pid, FEED_NODE, &(leaf->p_info));
-      sn_sendmsg ( tree->socket, parent->p_info.pid, DROP_NODE, &(leaf->p_info));
+      struct node_t *child = list_get (new->children, i);
+      sn_sendmsg ( tree->socket, child->p_info.pid, FOLLOW_NODE, &(new->p_info));
+      sn_sendmsg ( tree->socket, new->p_info.pid, FEED_NODE, &(child->p_info));
+      if (replace != NULL && child != leaf)
+        sn_sendmsg (tree->socket, replace->p_info.pid, DROP_NODE, &(child->p_info));
     }
+
+    if ( leaf != NULL)
+      sn_sendmsg ( tree->socket, parent->p_info.pid, DROP_NODE, &(leaf->p_info));
   }
   return 0;
 }
@@ -369,33 +427,27 @@ void printTree(struct tree_t *tree)
 {
 	struct alpha_queue *queue;
 	struct node_t *print;
-	FILE *f;
-	
-	f = fopen (FILELOC, "a+");
-	
 	
 	queue = alpha_queue_new();
 	
 	alpha_queue_push( queue, (void*) tree->root);
-fprintf(f, "%s\n", "test");
+  fprintf(stdout, "\n\n\n\n\n\n");
 
 	while(( print = (struct node_t*)alpha_queue_pop(queue)) != NULL) {
-		fprintf(f, "Node PID: %s\n", print->p_info.pid);
-		fprintf(f, "Node IP: %s\n", print->p_info.addr);
-		fprintf(f, "Node # of children: %llu\n", list_count(print->children));
-    fprintf(f, "Node max children: %d\n", print->max_c);
+		fprintf(stdout, "Node PID: %s\n", print->p_info.pid);
+		fprintf(stdout, "Node # of children: %llu\n", list_count(print->children));
+    fprintf(stdout, "Node max children: %d\n", print->max_c);
 		if(print->parent != NULL)
-			fprintf(f, "Node Parent: %s\n", print->parent->p_info.pid);
+			fprintf(stdout, "Node Parent: %s\n", print->parent->p_info.pid);
 		int i;
 		for( i = 0; i < list_count(print->children); i++){
 			struct node_t *child = (struct node_t*)list_get (print->children, i);
-			fprintf(f, "Node Child: %s\n", child->p_info.pid);
+			fprintf(stdout, "Node Child: %s\n", child->p_info.pid);
 			alpha_queue_push ( queue, (void*) child);
 		}
-		fprintf(f, "BREAK!!!!!!\n\n\n");
+		fprintf(stdout, "\n\n");
 
 	}
-	fclose(f);
 }
 
 
