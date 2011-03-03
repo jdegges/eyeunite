@@ -131,6 +131,50 @@ static void clearParent(struct node_t *remove)
   list_remove_data (parent->children, (void*)remove);
 }
 
+
+/*
+* Used to find a peer in the tree.
+* Returns pointer to peer if found.
+* Returns NULL if memory error.
+* Returns root if node not found.
+*/
+static struct node_t *findPeer(struct node_t *root, char pid[])
+{
+  struct node_t *find = NULL;
+  struct alpha_queue *queue;
+  struct node_t *temp;
+  int i;
+
+  queue = alpha_queue_new();
+  temp = root;
+
+  do{
+    if(strcmp(pid, temp->p_info.pid) == 0)
+      find = temp;
+    else{
+      for ( i = 0; i < list_count (temp->children); i++){
+        if( alpha_queue_push(queue, list_get (temp->children, i)) == false){
+          print_error( "out of memory");
+          alpha_queue_free(queue);
+          return NULL;
+        }
+      }
+    }
+
+    if(( temp = (struct node_t*)alpha_queue_pop(queue)) == NULL && find == NULL){
+      fprintf(stderr, "tree: could not find peer\n");
+      alpha_queue_free(queue);
+      return root;
+    }
+    
+  }while(temp != NULL && find == NULL);
+
+  alpha_queue_free(queue);
+ 
+  return find;
+}
+
+
 /*
 * Used to find a leaf node if there are no empty spots
 * Returns a leaf, or NULL if none found
@@ -195,6 +239,14 @@ int addPeer(struct tree_t *tree, int peerbw, char pid[], char addr[], char port[
   struct node_t *new;
   struct node_t *replace;
   struct node_t *leaf = NULL;
+
+  
+  struct node_t *temp = findPeer(tree->root, pid);
+  if (temp == NULL)
+    return -1;
+  if (temp != root)
+    return 0;
+  //todo, make sure it isnt already in tree
 
   // try to find empty slot to attach to, or switch with a leaf if no empty spot
   parent = locateEmpty( tree->root);
@@ -280,50 +332,6 @@ int addPeer(struct tree_t *tree, int peerbw, char pid[], char addr[], char port[
   }
   return 0;
 }
-
-
-/*
-* Used to find a peer in the tree.
-* Returns pointer to peer if found.
-* Returns NULL if memory error.
-* Returns root if node not found.
-*/
-static struct node_t *findPeer(struct node_t *root, char pid[])
-{
-  struct node_t *find = NULL;
-  struct alpha_queue *queue;
-  struct node_t *temp;
-  int i;
-
-  queue = alpha_queue_new();
-  temp = root;
-
-  do{
-    if(strcmp(pid, temp->p_info.pid) == 0)
-      find = temp;
-    else{
-      for ( i = 0; i < list_count (temp->children); i++){
-        if( alpha_queue_push(queue, list_get (temp->children, i)) == false){
-          print_error( "out of memory");
-          alpha_queue_free(queue);
-          return NULL;
-        }
-      }
-    }
-
-    if(( temp = (struct node_t*)alpha_queue_pop(queue)) == NULL && find == NULL){
-      fprintf(stderr, "tree: could not find peer\n");
-      alpha_queue_free(queue);
-      return root;
-    }
-    
-  }while(temp != NULL && find == NULL);
-
-  alpha_queue_free(queue);
- 
-  return find;
-}
-
 
 
 int removePeer(struct tree_t *tree, char pid[])
