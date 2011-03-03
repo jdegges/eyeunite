@@ -170,7 +170,9 @@ void* dataThread(void* arg)
       if(!(packet->seqnum < seqnum))
       {
         pthread_mutex_lock(&packet_buffer_mutex);
-        g_hash_table_insert(packet_table, &(packet->seqnum), packet->data);
+        uint64_t seqnum = packet->seqnum;
+        packet->seqnum = len;
+        g_hash_table_insert(packet_table, &seqnum, packet);
         pthread_mutex_unlock(&packet_buffer_mutex);
       }
 
@@ -252,7 +254,7 @@ void* displayThread(void* arg)
         if(timestamps)
           fwrite(temp, 1, EU_PACKETLEN*2, output_file);
         else
-          fwrite(packet->data, 1, EU_PACKETLEN, output_file);
+          fwrite(packet->data, 1, packet->seqnum, output_file);
         free(packet);
         start = clock();
         seqnum++;
