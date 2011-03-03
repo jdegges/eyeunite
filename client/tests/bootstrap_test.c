@@ -16,7 +16,7 @@ main (void)
 
   bootstrap_global_init ();
 
-  bs = bootstrap_init ("http://eyeunite.appspot.com", "80", pid_token, addr);
+  bs = bootstrap_init (APP_ENGINE, "1234", pid_token, addr);
   if (NULL == bs) {
     print_error ("bootstrap_init");
     return 1;
@@ -26,6 +26,8 @@ main (void)
     print_error ("bootstrap_lobby_create");
     return 1;
   }
+
+  bootstrap_cleanup (bs);
 
   bootstrap_global_cleanup ();
 

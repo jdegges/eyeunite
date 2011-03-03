@@ -51,6 +51,7 @@ bootstrap_global_init (void)
 void
 bootstrap_global_cleanup (void)
 {
+  xmlCleanupParser ();
   curl_global_cleanup ();
 }
 
@@ -341,10 +342,7 @@ error:
 void
 bootstrap_cleanup (struct bootstrap *b)
 {
-  xmlCleanupParser ();
-
   if (b) {
-    free (b->lobby_token);
     free (b->host);
     free (b->buf.data);
     if (b->curl) curl_easy_cleanup (b->curl);
@@ -429,6 +427,8 @@ bootstrap_lobby_create (struct bootstrap *b, char *lobby_token)
       print_error ("server did not process my request properly");
       goto error;
     }
+
+    xmlFreeDoc (doc);
   }
 
   /* temporary, should be removed */
