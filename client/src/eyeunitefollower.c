@@ -210,7 +210,8 @@ void* statusThread(void* arg)
     }
     else if(msg->type == FOLLOW_NODE)
     {
-      struct peer_info pi = msg->node_params;
+      struct peer_info pi;
+      memcpy(&pi, &(msg->node_params), sizeof(struct peer_info));
       print_error("FOLLOW_NODE\n");
       print_error("Changing upstream peer %s\n", pi.pid);
       pthread_mutex_lock(&upstream_peer_mutex);
