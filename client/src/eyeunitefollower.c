@@ -310,17 +310,17 @@ int main(int argc, char* argv[])
   bootstrap_global_init();
   if(!(b = bootstrap_init(APP_ENGINE, my_port, my_pid, my_addr)))
   {
-    print_error("Failed intitializing bootstrap!\n");
+    print_error("Bootstrap call: Failed intitializing bootstrap!\n");
     return 1;
   }
   if(bootstrap_lobby_join(b, lobby_token))
   {
-    print_error("Failed joining lobby %s\n", lobby_token);
+    print_error("Bootstrap call: Failed joining lobby %s\n", lobby_token);
     return 1;
   }
   if(bootstrap_lobby_get_source(b, upstream_peer))
   {
-    print_error("Failed to get source\n");
+    print_error("Bootstrap call: Failed to get source\n");
     return 1;
   }
 
