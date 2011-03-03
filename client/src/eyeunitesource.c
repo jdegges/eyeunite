@@ -91,7 +91,7 @@ static void* data_thread(void *vptr) {
   dpack.seqnum = 0;
   for (;;) {
     size_t amount = fread (dpack.data, 1, EU_PACKETLEN - sizeof (uint64_t), fp);
-    if (EU_PACKETLEN - sizeof (uint64_t) != amount) {
+    if (0 == amount) {
       print_error ("end of file..?");
       return NULL;
     }
@@ -121,7 +121,7 @@ static void* data_thread(void *vptr) {
         return NULL;
       }
 
-      if (EU_PACKETLEN != eu_send (sock, &dpack, EU_PACKETLEN, 0)) {
+      if (EU_PACKETLEN != eu_send (sock, &dpack, amount + sizeof (uint64_t), 0)) {
         print_error ("couldn't send full packet :/");
         return NULL;
       }
