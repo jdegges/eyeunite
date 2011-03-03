@@ -122,7 +122,7 @@ void drop_downstream_peer(struct peer_node* new_peer)
   return;
 }
 
-void change_upstream_peer(struct peer_info* up_peer, int thread_id)
+void change_upstream_peer(struct peer_info* up_peer)
 {
   void* new_up_eu_sock = eu_socket(EU_PULL);
   eu_bind(new_up_eu_sock, my_addr, my_port);
@@ -196,7 +196,7 @@ void* statusThread(void* arg)
       print_error("FOLLOW_NODE\n");
       print_error("Changing upstream peer %s\n", pi.pid);
       pthread_mutex_lock(&upstream_peer_mutex);
-      change_upstream_peer(&pi, (int)arg);
+      change_upstream_peer(&pi);
       pthread_mutex_unlock(&upstream_peer_mutex);
     }
     else
@@ -325,12 +325,10 @@ int main(int argc, char* argv[])
   pthread_t data_thread;
   pthread_t display_thread;
 
-  int thread_id = 0;
-
   // Start status thread
-  pthread_create(&status_thread, NULL, statusThread, (void*)thread_id);
-  pthread_create(&data_thread, NULL, dataThread, (void*)thread_id);
-  pthread_create(&display_thread, NULL, displayThread, (void*)thread_id);
+  pthread_create(&status_thread, NULL, statusThread, NULL);
+  pthread_create(&data_thread, NULL, dataThread, NULL);
+  pthread_create(&display_thread, NULL, displayThread, NULL);
 
 
   // Clean up at termination
