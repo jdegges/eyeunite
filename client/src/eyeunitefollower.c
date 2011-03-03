@@ -338,7 +338,7 @@ int main(int argc, char* argv[])
 
   // Initiate connection to source
   print_error ("source pid: %s", upstream_peer.pid);
-  print_error ("source ip: %s", upstream_peer.addr);
+  print_error ("source ip: %s:%s", upstream_peer.addr, upstream_peer.port);
   change_upstream_peer(upstream_peer);
   print_error ("aok");
 
