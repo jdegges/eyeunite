@@ -27,6 +27,7 @@ int my_bw;
 int my_port;
 int seqnum = -1;
 FILE* output_file;
+bool timestamps;
 
 GHashTable* packet_table;
 
@@ -240,8 +241,10 @@ void displayThread()
         // "Display" packet
         char temp[EU_PACKETLEN];
         snpritnf(temp, EU_PACKETLEN*2, "Packet [%lld]: %s", packet->seqnum, packet->data);
-        fwrite(packet->data, 1, EU_PACKETLEN, output_file);
-        print_error("%s", temp);
+        if(timestamps)
+          fwrite(temp, 1, EU_PACKETLEN*2, output_file);
+        else
+          fwrite(packet->data, 1, EU_PACKETLEN, output_file);
         free(data_pack);
         start = clock();
         seqnum++;
@@ -271,7 +274,7 @@ int main(int argc, char* argv[])
   if(argc < 4)
   {
     printf("Usage:\n");
-    printf("eyeunitefollower <lobby token> <listen port> <bandwidth> [output file]");
+    printf("eyeunitefollower <lobby token> <listen port> <bandwidth> [output file] [--debug]");
     return -1;
   }
   lobby_token = argv[1];
@@ -281,6 +284,10 @@ int main(int argc, char* argv[])
     output_file = fopen(argv[4], "w");
   else
     output_file = stdout;
+  if(argc >= 6 && (strcomp(argv[5], "--debug") == 0))
+    timestamps = true;
+  else
+    timestamps = false;
 
   // Bootstrap
   if(!(b = bootstrap_init(APP_ENGINE, 8080, my_pid, my_addr)))
