@@ -215,12 +215,19 @@ void* statusThread(void* arg)
 
 void displayThread()
 {
+  bool sleepOnce = true;
+  int delay_ms = 2; // Delay before "playback"
   int timeout_ms = 20; // Stub value, replace later with better timeout interval
   clock_t start;
   while(1)
   {
     if(seqnum >= 0)
     {
+      if(sleepOnce)
+      {
+        sleep(delay_ms);
+        sleepOnce = false;
+      }
       struct data_pack* packet;
       packet = g_hash_table_lookup(data_table, seqnum);
       if(packet != NULL)
@@ -233,7 +240,8 @@ void displayThread()
         // "Display" packet
         char temp[EU_PACKETLEN];
         snpritnf(temp, EU_PACKETLEN*2, "Packet [%lld]: %s", packet->seqnum, packet->data);
-        fwrite(temp, 1, EU_PACKETLEN*2, output_file);
+        fwrite(packet->data, 1, EU_PACKETLEN, output_file);
+        print_error("%s", temp);
         free(data_pack);
         start = clock();
         seqnum++;
