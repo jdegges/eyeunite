@@ -267,6 +267,7 @@ void* displayThread(void* arg)
     }
     else
       start = clock();
+    usleep (50000);
   }
 }
 
