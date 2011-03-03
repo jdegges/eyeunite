@@ -55,5 +55,12 @@ freeTree(struct tree_t *tree);
 //debug function
 void printTree(struct tree_t *tree);
 
+void* getSocket(struct tree_t *tree);
+
+uint64_t countRootChildren(struct tree_t *tree);
+
+struct peer_info *getRootChild(struct tree_t *tree, uint64_t pos);
+
+
 
 #endif

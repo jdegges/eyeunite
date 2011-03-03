@@ -507,11 +507,18 @@ void printTree(struct tree_t *tree)
 }
 
 
+void* getSocket(struct tree_t *tree)
+{
+  return tree->socket;
+}
 
+uint64_t countRootChildren(struct tree_t *tree)
+{
+  return list_count (tree->root->children);
+}
 
-
-
-
-
-
-
+struct peer_info *getRootChild(struct tree_t *tree, uint64_t pos)
+{
+  struct node_t *child = list_get (tree->root->children, pos);
+  return &child->p_info;
+}

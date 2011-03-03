@@ -25,6 +25,7 @@ eyeunitesource_SOURCES = eyeunitesource.c
 eyeunitesource_LDADD = $(top_srcdir)/src/libsourcenode.la
 eyeunitesource_LDADD += $(top_srcdir)/src/libtree.la
 eyeunitesource_LDADD += $(top_srcdir)/src/libbootstrap.la
+eyeunitesource_LDADD += $(top_srcdir)/src/libeasyudp.la
 
 bin_PROGRAMS += eyeunitefollower
 eyeunitefollower_SOURCES = eyeunitefollower.c
