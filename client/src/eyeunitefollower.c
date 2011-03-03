@@ -13,7 +13,7 @@
 #include "time.h"
 
 // Global variables for threads
-struct peer_info upstream_peer;
+struct peer_info* upstream_peer;
 void* upstream_sock = NULL;
 struct eu_socket* up_eu_sock = NULL;
 struct peer_node* downstream_peers = NULL;
@@ -147,7 +147,11 @@ void change_upstream_peer(struct peer_info* up_peer)
   // Change global variables
   upstream_sock = new_upstream_sock;
   up_eu_sock = new_up_eu_sock;
-  memcpy(&upstream_peer, up_peer, sizeof(struct peer_info));
+
+  if(upstream_peer && upstream_peer != up_peer)
+    free(upstream_peer);
+
+  upstream_peer = up_peer;
 }
 
 void* dataThread(void* arg)
@@ -157,7 +161,7 @@ void* dataThread(void* arg)
   while(1)
   {
     // Blocking recv
-    if((len = eu_recv(up_eu_sock, buf, EU_PACKETLEN, 0, upstream_peer.addr, upstream_peer.port)) > 0)
+    if((len = eu_recv(up_eu_sock, buf, EU_PACKETLEN, 0, upstream_peer->addr, upstream_peer->port)) > 0)
     {
       struct data_pack* packet = (struct data_pack*)malloc(sizeof(struct data_pack));
       memcpy(packet, buf, len);
@@ -275,7 +279,6 @@ int main(int argc, char* argv[])
 {
   int i;
   struct bootstrap* b;
-  struct peer_info source_info;
   char* lobby_token;
   void* sock;
 
@@ -315,7 +318,7 @@ int main(int argc, char* argv[])
     print_error("Failed joining lobby %s\n", lobby_token);
     return 1;
   }
-  if(bootstrap_lobby_get_source(b, &source_info))
+  if(bootstrap_lobby_get_source(b, upstream_peer))
   {
     print_error("Failed to get source\n");
     return 1;
@@ -328,15 +331,14 @@ int main(int argc, char* argv[])
   memcpy(my_peer_info->port, my_port, EU_PORTSTRLEN);
   my_peer_info->peerbw = my_bw;
   // Finish initialization
-  memcpy(&upstream_peer, &source_info, sizeof(struct peer_info));
   downstream_peers = NULL;
   num_downstream_peers = 0;
   packet_table = g_hash_table_new(g_int_hash, g_int_equal);
 
   // Initiate connection to source
-  print_error ("source pid: %s", upstream_peer.pid);
-  print_error ("source ip: %s:%s", upstream_peer.addr, upstream_peer.port);
-  change_upstream_peer(&upstream_peer);
+  print_error ("source pid: %s", upstream_peer->pid);
+  print_error ("source ip: %s:%s", upstream_peer->addr, upstream_peer->port);
+  change_upstream_peer(upstream_peer);
 
   pthread_t status_thread;
   pthread_t data_thread;
@@ -361,5 +363,6 @@ int main(int argc, char* argv[])
   bootstrap_cleanup(b);
   bootstrap_global_cleanup();
   free(my_peer_info);
+  free(upstream_peer);
   return 0;
 }
