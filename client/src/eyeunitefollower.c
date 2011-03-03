@@ -339,7 +339,10 @@ int main(int argc, char* argv[])
   // Initiate connection to source
   print_error ("source pid: %s", upstream_peer->pid);
   print_error ("source ip: %s:%s", upstream_peer->addr, upstream_peer->port);
+  
+  pthread_mutex_lock(&upstream_peer_mutex);
   change_upstream_peer(upstream_peer);
+  pthread_mutex_unlock(&upstream_peer_mutex);
 
   pthread_t status_thread;
   pthread_t data_thread;
