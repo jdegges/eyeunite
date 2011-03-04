@@ -138,10 +138,12 @@ void* dataThread(void* arg)
   while(1)
   {
     // Blocking recv
-    if(up_eu_sock && upstream_peer && (len = eu_recv(up_eu_sock, buf, EU_PACKETLEN, 0, upstream_peer->addr, upstream_peer->port)) > 0)
+    if(up_eu_sock && (len = eu_recv(up_eu_sock, buf, EU_PACKETLEN, 0, upstream_peer->addr, upstream_peer->port)) > 0)
     {
       struct data_pack* packet = (struct data_pack*)malloc(sizeof(struct data_pack));
       memcpy(packet, buf, len);
+      print_error("Recieved packet %lld", packet->seqnum);
+
       // Set the starting sequence number to the first packet that arrives
       if(seqnum < 0)
         seqnum = packet->seqnum;
