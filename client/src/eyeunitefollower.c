@@ -29,7 +29,6 @@ int my_bw = 1;
 int seqnum = -1;
 FILE* output_file = NULL;
 bool timestamps = false;
-
 GHashTable* packet_table = NULL;
 
 struct peer_node
@@ -132,7 +131,7 @@ void change_upstream_peer(struct peer_info* up_peer)
     free(up_eu_sock);
   }
   if(upstream_peer != NULL)
-    free(upstream_peer)
+    free(upstream_peer);
   up_eu_sock = new_up_eu_sock;
   upstream_peer = up_peer;
 }
@@ -340,15 +339,11 @@ int main(int argc, char* argv[])
 
 
   // Clean up at termination
-
   pthread_join(status_thread, NULL);
   pthread_join(data_thread, NULL);
   pthread_join(display_thread, NULL);
 
-  close_all_sockets();
-  if(output_file != stdout)
-    fclose(output_file);
-
+  // Close sockets and free memory
   bootstrap_cleanup(b);
   bootstrap_global_cleanup();
   free(my_peer_info);
@@ -356,5 +351,9 @@ int main(int argc, char* argv[])
   fn_closesocket(source_zmq_sock);
   if(source_zmq_sock)
     free(source_zmq_sock);
+  close_all_peer_sockets();
+  if(output_file != stdout)
+    fclose(output_file);
+
   return 0;
 }
