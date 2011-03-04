@@ -126,6 +126,8 @@ static void* data_thread(void *vptr) {
         return NULL;
       }
 
+      print_error ("sent packet (to %s:%s) with (seqnum, len) = (%lu, %lu)", pi->addr, pi->port, dpack.seqnum, amount + sizeof (uint64_t));
+
       alpha_queue_push (socks, sock);
     }
 

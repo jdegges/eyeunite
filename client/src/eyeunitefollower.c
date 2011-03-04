@@ -14,18 +14,15 @@
 #define MAP_SIZE 1024
 
 // Global variables for threads
-struct peer_info* upstream_peer = NULL;
-struct peer_info* source_peer = NULL;
+struct peer_info source_peer;
 void* source_zmq_sock = NULL;
-struct eu_socket* up_eu_sock = NULL;
+struct eu_socket* upstream_eu_sock = NULL;
 struct peer_node* downstream_peers = NULL;
 size_t num_downstream_peers = 0;
 pthread_mutex_t downstream_peers_mutex = PTHREAD_MUTEX_INITIALIZER;
-pthread_mutex_t upstream_peer_mutex = PTHREAD_MUTEX_INITIALIZER;
+pthread_mutex_t source_peer_mutex = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t packet_buffer_mutex = PTHREAD_MUTEX_INITIALIZER;
-char* my_pid = NULL;
-char* my_addr = NULL;
-char* my_port = NULL;
+struct peer_info my_peer_info;
 int my_bw = 1;
 int seqnum = -1;
 FILE* output_file = NULL;
@@ -134,23 +131,6 @@ void drop_downstream_peer(struct peer_node* new_peer)
   return;
 }
 
-// Called by statusThread upon recving FOLLOW msg
-// * Binds new eu_socket for the new upstream peer
-// * Closes any open upstream sockets and frees memory
-void change_upstream_peer(struct peer_info* up_peer)
-{
-  void* new_up_eu_sock = eu_socket(EU_PULL);
-  eu_bind(new_up_eu_sock, my_addr, my_port);
-  if(up_eu_sock != NULL)
-  {
-    eu_close(up_eu_sock);
-    free(up_eu_sock);
-  }
-  if(upstream_peer != NULL)
-    free(upstream_peer);
-  up_eu_sock = new_up_eu_sock;
-  upstream_peer = up_peer;
-}
 
 // Listens on upstream eu_socket for incoming UDP data to push to peers
 // Delays playback by a short amount, and has a timeout period for missing packets
@@ -160,8 +140,12 @@ void* dataThread(void* arg)
   char buf[EU_PACKETLEN];
   while(1)
   {
+    char from_addr[EU_ADDRSTRLEN];
+    char from_port[EU_PORTSTRLEN];
+
     // Blocking recv
-    if(up_eu_sock && (len = eu_recv(up_eu_sock, buf, EU_PACKETLEN, 0, upstream_peer->addr, upstream_peer->port)) > 0)
+    if(upstream_eu_sock && (len = eu_recv(upstream_eu_sock, buf, EU_PACKETLEN,
+                                          0, from_addr, from_port)) > 0)
     {
       // Converts char string buffer to packet struct
       struct data_pack* packet = (struct data_pack*)malloc(sizeof(struct data_pack));
@@ -171,6 +155,8 @@ void* dataThread(void* arg)
       // Set the starting sequence number to the first packet that arrives
       if(seqnum < 0)
         seqnum = packet->seqnum;
+
+      print_error ("got data packet with (seqnum, len) = (%lu, %ld)", packet->seqnum, len);
 
       // Drops out of order packets that are behind the display thread
       if(!(packet->seqnum < seqnum))
@@ -185,6 +171,11 @@ void* dataThread(void* arg)
       push_data_to_peers(buf, len);
       pthread_mutex_unlock(&downstream_peers_mutex);
     }
+    else
+    {
+      print_error("absurd failure");
+      return NULL;
+    }
   }
 }
 
@@ -192,9 +183,11 @@ void* statusThread(void* arg)
 {
   while(1)
   {
+    // Receive message from the source
     message_struct* msg = fn_rcvmsg(source_zmq_sock);
     if(!msg)
       print_error("Error: Status thread received null msg\n");
+
     print_error("Received Message: ");
     if(msg->type == FEED_NODE)
     {
@@ -220,9 +213,12 @@ void* statusThread(void* arg)
       memcpy(&pi, &(msg->node_params), sizeof(struct peer_info));
       print_error("FOLLOW_NODE\n");
       print_error("Changing upstream peer %s\n", pi.pid);
-      pthread_mutex_lock(&upstream_peer_mutex);
-      change_upstream_peer(&pi);
-      pthread_mutex_unlock(&upstream_peer_mutex);
+      // XXX the action taken below is not fulfilled by the following 3 lines
+      //     rather, the data thread should be updated to stop trashing udp
+      //       packets from `pi'. for now its O.K. to do nothing.
+      //pthread_mutex_lock(&upstream_peer_mutex);
+      //change_upstream_peer(&pi);
+      //pthread_mutex_unlock(&upstream_peer_mutex);
     }
     else
     {
@@ -284,13 +280,6 @@ int main(int argc, char* argv[])
   void* sock = NULL;
   char* lobby_token = NULL;
 
-  my_pid = malloc(EU_TOKENSTRLEN*sizeof(char));
-  my_port = malloc(EU_PORTSTRLEN*sizeof(char));
-  my_addr = malloc(EU_ADDRSTRLEN*sizeof(char));
-
-  // Follower peer info variables
-  struct peer_info* my_peer_info = NULL;
-
   if(argc < 4)
   {
     printf("Usage:\n");
@@ -298,8 +287,8 @@ int main(int argc, char* argv[])
     return -1;
   }
   lobby_token = argv[1];
-  my_port = argv[2];
-  my_bw = atoi(argv[3]);
+  memcpy(my_peer_info.port, argv[2], EU_PORTSTRLEN);
+  my_peer_info.peerbw = atoi(argv[3]);
   output_file = stdout;
   timestamps = false;
   if(argc >= 5)
@@ -314,8 +303,8 @@ int main(int argc, char* argv[])
 
   // Bootstrap
   bootstrap_global_init();
-  source_peer = malloc(sizeof(struct peer_info));
-  if(!(b = bootstrap_init(APP_ENGINE, my_port, my_pid, my_addr)))
+  if(!(b = bootstrap_init(APP_ENGINE, my_peer_info.port, my_peer_info.pid,
+                          my_peer_info.addr)))
   {
     print_error("Bootstrap call: Failed intitializing bootstrap!\n");
     return 1;
@@ -325,18 +314,12 @@ int main(int argc, char* argv[])
     print_error("Bootstrap call: Failed joining lobby %s\n", lobby_token);
     return 1;
   }
-  if(bootstrap_lobby_get_source(b, source_peer))
+  if(bootstrap_lobby_get_source(b, &source_peer))
   {
     print_error("Bootstrap call: Failed to get source\n");
     return 1;
   }
 
-  // Set my peer_info
-  my_peer_info = malloc (sizeof *my_peer_info);
-  memcpy(my_peer_info->pid, my_pid, EU_TOKENSTRLEN);
-  memcpy(my_peer_info->addr, my_addr, EU_ADDRSTRLEN);
-  memcpy(my_peer_info->port, my_port, EU_PORTSTRLEN);
-  my_peer_info->peerbw = my_bw;
   // Finish initialization
   downstream_peers = NULL;
   num_downstream_peers = 0;
@@ -345,13 +328,26 @@ int main(int argc, char* argv[])
     packet_table[i] = NULL;
 
   // Initiate connection to source
-  print_error ("source pid: %s", source_peer->pid);
-  print_error ("source ip: %s:%s", source_peer->addr, source_peer->port);
-  char* temp = malloc(EU_ADDRSTRLEN*4*sizeof(char));
-  snprintf (temp, EU_ADDRSTRLEN*4, "tcp://%s:%s", source_peer->addr, source_peer->port);
-  source_zmq_sock = fn_initzmq (my_pid, temp);
-  fn_sendmsg(source_zmq_sock, REQ_JOIN, my_peer_info);
-  
+  print_error ("source pid: %s", source_peer.pid);
+  print_error ("source ip: %s:%s", source_peer.addr, source_peer.port);
+  char temp[EU_ADDRSTRLEN*4];
+  snprintf (temp, EU_ADDRSTRLEN*4, "tcp://%s:%s", source_peer.addr,
+            source_peer.port);
+  source_zmq_sock = fn_initzmq (my_peer_info.pid, temp);
+  fn_sendmsg(source_zmq_sock, REQ_JOIN, &my_peer_info);
+
+  // Bind to socket that will receive data (can be used without re-binding for
+  // the duration of the program).
+  upstream_eu_sock = eu_socket(EU_PULL);
+  if (upstream_eu_sock == NULL)
+  {
+    print_error ("absurd!");
+    return 1;
+  }
+  eu_bind(upstream_eu_sock, my_peer_info.addr, my_peer_info.port);
+
+  sleep (1); // XXX: shouldn't be necessary.
+
   pthread_t status_thread;
   pthread_t data_thread;
   pthread_t display_thread;
@@ -371,14 +367,7 @@ int main(int argc, char* argv[])
   bootstrap_cleanup(b);
   bootstrap_global_cleanup();
   free(temp);
-  free(my_peer_info);
-  free(source_peer);
-  free(my_pid);
-  free(my_port);
-  free(my_addr);
   fn_closesocket(source_zmq_sock);
-  if(source_zmq_sock)
-    free(source_zmq_sock);
   close_all_peer_sockets();
   if(output_file != stdout)
     fclose(output_file);
