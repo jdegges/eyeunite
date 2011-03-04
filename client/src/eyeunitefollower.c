@@ -14,7 +14,7 @@
 
 // Global variables for threads
 struct peer_info source_peer;
-void* source_sock = NULL;
+void* source_zmq_sock = NULL;
 struct eu_socket* upstream_eu_sock = NULL;
 struct peer_node* downstream_peers = NULL;
 size_t num_downstream_peers = 0;
@@ -25,9 +25,9 @@ struct peer_info my_peer_info;
 int seqnum = -1;
 FILE* output_file = NULL;
 bool timestamps = false;
-
 GHashTable* packet_table = NULL;
 
+// Internal node to store peer_info, related eu_sock, and use in linked lists
 struct peer_node
 {
   struct peer_info peer_info;
@@ -35,6 +35,8 @@ struct peer_node
   struct peer_node* next;
 };
 
+// Wraps peer_info data into a peer_node
+// Attempts to open a eu_socket on that peer
 struct peer_node* peer_node(struct peer_info node_params)
 {
   struct peer_node* pn = (struct peer_node*)malloc(sizeof(struct peer_node));
@@ -50,19 +52,23 @@ struct peer_node* peer_node(struct peer_info node_params)
   return pn;
 };
 
-void close_all_sockets()
+// Traverses peer_node linked list and closes sockets/frees memory
+void close_all_peer_sockets()
 {
-  if(source_sock)
-    fn_closesocket(source_sock);
   struct peer_node* node = downstream_peers;
+  struct peer_node* last;
   while(node != NULL)
   {
+    last = node;
     eu_close(node->eu_sock);
+    free(node->eu_sock);
     node = node->next;
+    free(last);
   }
   return;
 }
 
+// Helper function that pushes len data in buf to all peers
 void push_data_to_peers(char* buf, size_t len)
 {
   struct peer_node* node = downstream_peers;
@@ -74,13 +80,16 @@ void push_data_to_peers(char* buf, size_t len)
     if(rc < len)
     {
       print_error("Failed to send data to peer %s", node->peer_info.pid);
-      // Don't return, but continue to try to push data to other peers
+      // If data push fails, don't return.
+      // but continue to try to push data to other peers
     }
     node = node->next;
   }
   return;
 }
 
+// Helper function called upon FEED being recv'd by statusThread
+// adds new peer to end of linked list
 void add_downstream_peer(struct peer_node* new_peer)
 {
   if(downstream_peers == NULL)
@@ -96,6 +105,7 @@ void add_downstream_peer(struct peer_node* new_peer)
   return;
 }
 
+// Traverses linked list of peers and closes that peers socket/frees memory
 void drop_downstream_peer(struct peer_node* new_peer)
 {
   if(downstream_peers == NULL)
@@ -119,6 +129,9 @@ void drop_downstream_peer(struct peer_node* new_peer)
   return;
 }
 
+
+// Listens on upstream eu_socket for incoming UDP data to push to peers
+// Delays playback by a short amount, and has a timeout period for missing packets
 void* dataThread(void* arg)
 {
   ssize_t len;
@@ -132,8 +145,11 @@ void* dataThread(void* arg)
     if(upstream_eu_sock && (len = eu_recv(upstream_eu_sock, buf, EU_PACKETLEN,
                                           0, from_addr, from_port)) > 0)
     {
+      // Converts char string buffer to packet struct
       struct data_pack* packet = (struct data_pack*)malloc(sizeof(struct data_pack));
       memcpy(packet, buf, len);
+      print_error("Recieved packet %lld", packet->seqnum);
+
       // Set the starting sequence number to the first packet that arrives
       if(seqnum < 0)
         seqnum = packet->seqnum;
@@ -150,6 +166,7 @@ void* dataThread(void* arg)
         pthread_mutex_unlock(&packet_buffer_mutex);
       }
 
+      // Pushes all packets to downstream peers
       pthread_mutex_lock(&downstream_peers_mutex);
       push_data_to_peers(buf, len);
       pthread_mutex_unlock(&downstream_peers_mutex);
@@ -167,10 +184,10 @@ void* statusThread(void* arg)
   while(1)
   {
     // Receive message from the source
-    message_struct* msg = fn_rcvmsg(source_sock);
-
+    message_struct* msg = fn_rcvmsg(source_zmq_sock);
     if(!msg)
       print_error("Error: Status thread received null msg\n");
+
     print_error("Received Message: ");
     if(msg->type == FEED_NODE)
     {
@@ -314,8 +331,8 @@ int main(int argc, char* argv[])
   char temp[EU_ADDRSTRLEN*4];
   snprintf (temp, EU_ADDRSTRLEN*4, "tcp://%s:%s", source_peer.addr,
             source_peer.port);
-  source_sock = fn_initzmq (my_peer_info.pid, temp);
-  fn_sendmsg(source_sock, REQ_JOIN, &my_peer_info);
+  source_zmq_sock = fn_initzmq (my_peer_info.pid, temp);
+  fn_sendmsg(source_zmq_sock, REQ_JOIN, &my_peer_info);
 
   // Bind to socket that will receive data (can be used without re-binding for
   // the duration of the program).
@@ -340,16 +357,17 @@ int main(int argc, char* argv[])
 
 
   // Clean up at termination
-
   pthread_join(status_thread, NULL);
   pthread_join(data_thread, NULL);
   pthread_join(display_thread, NULL);
 
-  close_all_sockets();
+  // Close sockets and free memory
+  bootstrap_cleanup(b);
+  bootstrap_global_cleanup();
+  fn_closesocket(source_zmq_sock);
+  close_all_peer_sockets();
   if(output_file != stdout)
     fclose(output_file);
 
-  bootstrap_cleanup(b);
-  bootstrap_global_cleanup();
   return 0;
 }
