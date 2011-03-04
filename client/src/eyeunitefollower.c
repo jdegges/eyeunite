@@ -127,8 +127,14 @@ void change_upstream_peer(struct peer_info* up_peer)
   void* new_up_eu_sock = eu_socket(EU_PULL);
   eu_bind(new_up_eu_sock, my_addr, my_port);
   if(up_eu_sock != NULL)
+  {
     eu_close(up_eu_sock);
+    free(up_eu_sock);
+  }
   up_eu_sock = new_up_eu_sock;
+  if(upstream_peer)
+    free(upstream_peer)
+  upstream_peer = up_peer;
 }
 
 void* dataThread(void* arg)
