@@ -31,6 +31,7 @@ FILE* output_file = NULL;
 bool timestamps = false;
 GHashTable* packet_table = NULL;
 
+// Internal node to store peer_info, related eu_sock, and use in linked lists
 struct peer_node
 {
   struct peer_info peer_info;
@@ -38,6 +39,8 @@ struct peer_node
   struct peer_node* next;
 };
 
+// Wraps peer_info data into a peer_node
+// Attempts to open a eu_socket on that peer
 struct peer_node* peer_node(struct peer_info node_params)
 {
   struct peer_node* pn = (struct peer_node*)malloc(sizeof(struct peer_node));
@@ -53,18 +56,23 @@ struct peer_node* peer_node(struct peer_info node_params)
   return pn;
 };
 
+// Traverses peer_node linked list and closes sockets/frees memory
 void close_all_peer_sockets()
 {
   struct peer_node* node = downstream_peers;
+  struct peer_node* last;
   while(node != NULL)
   {
+    last = node;
     eu_close(node->eu_sock);
     free(node->eu_sock);
     node = node->next;
+    free(last);
   }
   return;
 }
 
+// Helper function that pushes len data in buf to all peers
 void push_data_to_peers(char* buf, size_t len)
 {
   struct peer_node* node = downstream_peers;
@@ -76,13 +84,16 @@ void push_data_to_peers(char* buf, size_t len)
     if(rc < len)
     {
       print_error("Failed to send data to peer %s", node->peer_info.pid);
-      // Don't return, but continue to try to push data to other peers
+      // If data push fails, don't return.
+      // but continue to try to push data to other peers
     }
     node = node->next;
   }
   return;
 }
 
+// Helper function called upon FEED being recv'd by statusThread
+// adds new peer to end of linked list
 void add_downstream_peer(struct peer_node* new_peer)
 {
   if(downstream_peers == NULL)
@@ -98,6 +109,7 @@ void add_downstream_peer(struct peer_node* new_peer)
   return;
 }
 
+// Traverses linked list of peers and closes that peers socket/frees memory
 void drop_downstream_peer(struct peer_node* new_peer)
 {
   if(downstream_peers == NULL)
@@ -121,6 +133,9 @@ void drop_downstream_peer(struct peer_node* new_peer)
   return;
 }
 
+// Called by statusThread upon recving FOLLOW msg
+// * Binds new eu_socket for the new upstream peer
+// * Closes any open upstream sockets and frees memory
 void change_upstream_peer(struct peer_info* up_peer)
 {
   void* new_up_eu_sock = eu_socket(EU_PULL);
@@ -136,6 +151,8 @@ void change_upstream_peer(struct peer_info* up_peer)
   upstream_peer = up_peer;
 }
 
+// Listens on upstream eu_socket for incoming UDP data to push to peers
+// Delays playback by a short amount, and has a timeout period for missing packets
 void* dataThread(void* arg)
 {
   ssize_t len;
@@ -145,6 +162,7 @@ void* dataThread(void* arg)
     // Blocking recv
     if(up_eu_sock && (len = eu_recv(up_eu_sock, buf, EU_PACKETLEN, 0, upstream_peer->addr, upstream_peer->port)) > 0)
     {
+      // Converts char string buffer to packet struct
       struct data_pack* packet = (struct data_pack*)malloc(sizeof(struct data_pack));
       memcpy(packet, buf, len);
       print_error("Recieved packet %lld", packet->seqnum);
@@ -163,6 +181,7 @@ void* dataThread(void* arg)
         pthread_mutex_unlock(&packet_buffer_mutex);
       }
 
+      // Pushes all packets to downstream peers
       pthread_mutex_lock(&downstream_peers_mutex);
       push_data_to_peers(buf, len);
       pthread_mutex_unlock(&downstream_peers_mutex);
