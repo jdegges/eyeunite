@@ -165,9 +165,9 @@ void* dataThread(void* arg)
         int seq = packet->seqnum;
         packet->seqnum = len;
         print_error("storing packet %lu", seq);
-        pthread_mutex_lock(&packet_buffer_mutex);
+        //pthread_mutex_lock(&packet_buffer_mutex);
         packet_table[seq%MAP_SIZE] = packet;
-        pthread_mutex_unlock(&packet_buffer_mutex);
+        //pthread_mutex_unlock(&packet_buffer_mutex);
       }
 
       // Pushes all packets to downstream peers
@@ -233,8 +233,8 @@ void* statusThread(void* arg)
 void* displayThread(void* arg)
 {
   bool sleepOnce = true;
-  int delay_ms = 2; // Delay before "playback"
-  int timeout_ms = 200; // Stub value, replace later with better timeout interval
+  int delay_ms = 0; // Delay before "playback"
+  int timeout_ms = 20; // Stub value, replace later with better timeout interval
   clock_t start;
   while(1)
   {
@@ -248,10 +248,10 @@ void* displayThread(void* arg)
       if(packet_table[seqnum%MAP_SIZE] != NULL)
       {
         // Remove packet from hash table buffer
-        pthread_mutex_lock(&packet_buffer_mutex);
+        //pthread_mutex_lock(&packet_buffer_mutex);
         struct data_pack* packet = packet_table[seqnum%MAP_SIZE];
         packet_table[seqnum%MAP_SIZE] = NULL;
-        pthread_mutex_unlock(&packet_buffer_mutex);
+        //pthread_mutex_unlock(&packet_buffer_mutex);
         
         print_error("Displaying packet (seqnum, len) = (%lu, %ld)", seqnum, packet->seqnum);
 
@@ -265,6 +265,7 @@ void* displayThread(void* arg)
         else
           fwrite(packet->data, 1, packet->seqnum, output_file);
         fflush(output_file);
+        free(packet);
         // free(packet); // Am I freeing too quickly?
         start = clock();
         seqnum++;
