@@ -10,7 +10,7 @@
 #define EU_HOSTURLLEN (3+1+2+EU_ADDRSTRLEN+1+EU_PORTSTRLEN)
 
 #define FILELOC "log.txt"
-#define APP_ENGINE "http://defy.local:8080"
+#define APP_ENGINE "http://localhost:8080"
 
 struct peer_info
 {

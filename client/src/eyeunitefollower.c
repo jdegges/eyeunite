@@ -2,7 +2,6 @@
 #include <stdlib.h>
 #include <pthread.h>
 #include <string.h>
-#include <glib.h>
 
 #include "bootstrap.h"
 #include "followernode.h"
@@ -11,6 +10,8 @@
 #include "easyudp.h"
 #include "alpha_queue.h"
 #include "time.h"
+
+#define MAP_SIZE 1024
 
 // Global variables for threads
 struct peer_info* upstream_peer = NULL;
@@ -22,14 +23,14 @@ size_t num_downstream_peers = 0;
 pthread_mutex_t downstream_peers_mutex = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t upstream_peer_mutex = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t packet_buffer_mutex = PTHREAD_MUTEX_INITIALIZER;
-char my_pid[EU_TOKENSTRLEN];
-char my_addr[EU_ADDRSTRLEN];
-char my_port[EU_PORTSTRLEN];
+char* my_pid = NULL;
+char* my_addr = NULL;
+char* my_port = NULL;
 int my_bw = 1;
 int seqnum = -1;
 FILE* output_file = NULL;
 bool timestamps = false;
-GHashTable* packet_table = NULL;
+struct data_pack** packet_table = NULL;
 
 // Internal node to store peer_info, related eu_sock, and use in linked lists
 struct peer_node
@@ -165,7 +166,7 @@ void* dataThread(void* arg)
       // Converts char string buffer to packet struct
       struct data_pack* packet = (struct data_pack*)malloc(sizeof(struct data_pack));
       memcpy(packet, buf, len);
-      print_error("Recieved packet %lld", packet->seqnum);
+      print_error("Recieved packet %llu", packet->seqnum);
 
       // Set the starting sequence number to the first packet that arrives
       if(seqnum < 0)
@@ -175,9 +176,7 @@ void* dataThread(void* arg)
       if(!(packet->seqnum < seqnum))
       {
         pthread_mutex_lock(&packet_buffer_mutex);
-        uint64_t seqnum = packet->seqnum;
-        packet->seqnum = len;
-        g_hash_table_insert(packet_table, &seqnum, packet);
+        packet_table[packet->seqnum%MAP_SIZE] = packet;
         pthread_mutex_unlock(&packet_buffer_mutex);
       }
 
@@ -246,23 +245,23 @@ void* displayThread(void* arg)
         sleep(delay_ms);
         sleepOnce = false;
       }
-      struct data_pack* packet;
-      packet = g_hash_table_lookup(packet_table, &seqnum);
-      if(packet != NULL)
+      if(packet_table[seqnum%MAP_SIZE] != NULL)
       {
         // Remove packet from hash table buffer
         pthread_mutex_lock(&packet_buffer_mutex);
-        g_hash_table_remove(packet_table, &seqnum);
+        struct data_pack* packet = packet_table[seqnum%MAP_SIZE];
+        packet_table[seqnum%MAP_SIZE] = NULL;
         pthread_mutex_unlock(&packet_buffer_mutex);
 
         // "Display" packet
-        char temp[EU_PACKETLEN*2];
+        char* temp = malloc(EU_PACKETLEN*2*sizeof(char));
         snprintf(temp, EU_PACKETLEN*2, "Packet [%lld]: %s", packet->seqnum, packet->data);
         if(timestamps)
           fwrite(temp, 1, EU_PACKETLEN*2, output_file);
         else
           fwrite(packet->data, 1, packet->seqnum, output_file);
         free(packet);
+        free(temp);
         start = clock();
         seqnum++;
       }
@@ -282,8 +281,12 @@ int main(int argc, char* argv[])
 {
   int i;
   struct bootstrap* b;
-  char* lobby_token = NULL;
   void* sock = NULL;
+  char* lobby_token = NULL;
+
+  my_pid = malloc(EU_TOKENSTRLEN*sizeof(char));
+  my_port = malloc(EU_PORTSTRLEN*sizeof(char));
+  my_addr = malloc(EU_ADDRSTRLEN*sizeof(char));
 
   // Follower peer info variables
   struct peer_info* my_peer_info = NULL;
@@ -295,7 +298,7 @@ int main(int argc, char* argv[])
     return -1;
   }
   lobby_token = argv[1];
-  memcpy(my_port, argv[2], EU_PORTSTRLEN);
+  my_port = argv[2];
   my_bw = atoi(argv[3]);
   output_file = stdout;
   timestamps = false;
@@ -304,7 +307,7 @@ int main(int argc, char* argv[])
     if(strcmp(argv[4], "--debug") == 0)
       timestamps == true;
     else
-      output_file = fopen(argv[4], "ab");
+      output_file = fopen(argv[4], "w");
   }
   if(argc >= 6 && (strcmp(argv[5], "--debug") == 0))
     timestamps = true;
@@ -337,12 +340,14 @@ int main(int argc, char* argv[])
   // Finish initialization
   downstream_peers = NULL;
   num_downstream_peers = 0;
-  packet_table = g_hash_table_new(g_int_hash, g_int_equal);
+  packet_table = malloc(MAP_SIZE*sizeof(struct data_pack*));
+  for(i = 0; i < MAP_SIZE; i++)
+    packet_table[i] = NULL;
 
   // Initiate connection to source
   print_error ("source pid: %s", source_peer->pid);
   print_error ("source ip: %s:%s", source_peer->addr, source_peer->port);
-  char temp[EU_ADDRSTRLEN*4];
+  char* temp = malloc(EU_ADDRSTRLEN*4*sizeof(char));
   snprintf (temp, EU_ADDRSTRLEN*4, "tcp://%s:%s", source_peer->addr, source_peer->port);
   source_zmq_sock = fn_initzmq (my_pid, temp);
   fn_sendmsg(source_zmq_sock, REQ_JOIN, my_peer_info);
@@ -365,8 +370,12 @@ int main(int argc, char* argv[])
   // Close sockets and free memory
   bootstrap_cleanup(b);
   bootstrap_global_cleanup();
+  free(temp);
   free(my_peer_info);
   free(source_peer);
+  free(my_pid);
+  free(my_port);
+  free(my_addr);
   fn_closesocket(source_zmq_sock);
   if(source_zmq_sock)
     free(source_zmq_sock);
