@@ -131,9 +131,9 @@ void change_upstream_peer(struct peer_info* up_peer)
     eu_close(up_eu_sock);
     free(up_eu_sock);
   }
-  up_eu_sock = new_up_eu_sock;
-  if(upstream_peer)
+  if(upstream_peer != NULL)
     free(upstream_peer)
+  up_eu_sock = new_up_eu_sock;
   upstream_peer = up_peer;
 }
 
