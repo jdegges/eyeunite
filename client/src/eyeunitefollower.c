@@ -150,7 +150,6 @@ void* dataThread(void* arg)
       // Converts char string buffer to packet struct
       struct data_pack* packet = (struct data_pack*)malloc(sizeof(struct data_pack));
       memcpy(packet, buf, len);
-      print_error("Recieved packet %llu", packet->seqnum);
 
       // Set the starting sequence number to the first packet that arrives
       if(seqnum < 0)
@@ -161,8 +160,13 @@ void* dataThread(void* arg)
       // Drops out of order packets that are behind the display thread
       if(!(packet->seqnum < seqnum))
       {
+        // Since the packet is stored at seqnum%MAP_SIZE, the seqnum field is
+        // not useful anymore. We substitute the length of the packet instead
+        int seq = packet->seqnum;
+        packet->seqnum = len;
+        print_error("storing packet %lu", seq);
         pthread_mutex_lock(&packet_buffer_mutex);
-        packet_table[packet->seqnum%MAP_SIZE] = packet;
+        packet_table[seq%MAP_SIZE] = packet;
         pthread_mutex_unlock(&packet_buffer_mutex);
       }
 
@@ -230,11 +234,11 @@ void* displayThread(void* arg)
 {
   bool sleepOnce = true;
   int delay_ms = 2; // Delay before "playback"
-  int timeout_ms = 20; // Stub value, replace later with better timeout interval
+  int timeout_ms = 200; // Stub value, replace later with better timeout interval
   clock_t start;
   while(1)
   {
-    if(seqnum >= 0 && g_hash_table_size(packet_table) > 0)
+    if(seqnum >= 0)
     {
       if(sleepOnce)
       {
@@ -248,16 +252,20 @@ void* displayThread(void* arg)
         struct data_pack* packet = packet_table[seqnum%MAP_SIZE];
         packet_table[seqnum%MAP_SIZE] = NULL;
         pthread_mutex_unlock(&packet_buffer_mutex);
+        
+        print_error("Displaying packet (seqnum, len) = (%lu, %ld)", seqnum, packet->seqnum);
 
         // "Display" packet
-        char* temp = malloc(EU_PACKETLEN*2*sizeof(char));
-        snprintf(temp, EU_PACKETLEN*2, "Packet [%lld]: %s", packet->seqnum, packet->data);
         if(timestamps)
+        {
+          char* temp[EU_PACKETLEN*2];
+          snprintf(temp, EU_PACKETLEN*2, "Packet [%lld]: %s", packet->seqnum, packet->data);
           fwrite(temp, 1, EU_PACKETLEN*2, output_file);
+        }
         else
           fwrite(packet->data, 1, packet->seqnum, output_file);
-        free(packet);
-        free(temp);
+        fflush(output_file);
+        // free(packet); // Am I freeing too quickly?
         start = clock();
         seqnum++;
       }
@@ -296,7 +304,7 @@ int main(int argc, char* argv[])
     if(strcmp(argv[4], "--debug") == 0)
       timestamps == true;
     else
-      output_file = fopen(argv[4], "w");
+      output_file = fopen(argv[4], "ab");
   }
   if(argc >= 6 && (strcmp(argv[5], "--debug") == 0))
     timestamps = true;
