@@ -14,7 +14,8 @@
 
 // Global variables for threads
 struct peer_info* upstream_peer = NULL;
-void* upstream_sock = NULL;
+struct peer_info* source_peer = NULL;
+void* source_zmq_sock = NULL;
 struct eu_socket* up_eu_sock = NULL;
 struct peer_node* downstream_peers = NULL;
 size_t num_downstream_peers = 0;
@@ -53,14 +54,13 @@ struct peer_node* peer_node(struct peer_info node_params)
   return pn;
 };
 
-void close_all_sockets()
+void close_all_peer_sockets()
 {
-  if(upstream_sock)
-    fn_closesocket(upstream_sock);
   struct peer_node* node = downstream_peers;
   while(node != NULL)
   {
     eu_close(node->eu_sock);
+    free(node->eu_sock);
     node = node->next;
   }
   return;
@@ -169,7 +169,7 @@ void* statusThread(void* arg)
 {
   while(1)
   {
-    message_struct* msg = fn_rcvmsg(upstream_sock);
+    message_struct* msg = fn_rcvmsg(source_zmq_sock);
     if(!msg)
       print_error("Error: Status thread received null msg\n");
     print_error("Received Message: ");
@@ -287,7 +287,7 @@ int main(int argc, char* argv[])
 
   // Bootstrap
   bootstrap_global_init();
-  upstream_peer = malloc(sizeof(struct peer_info));
+  source_peer = malloc(sizeof(struct peer_info));
   if(!(b = bootstrap_init(APP_ENGINE, my_port, my_pid, my_addr)))
   {
     print_error("Bootstrap call: Failed intitializing bootstrap!\n");
@@ -298,7 +298,7 @@ int main(int argc, char* argv[])
     print_error("Bootstrap call: Failed joining lobby %s\n", lobby_token);
     return 1;
   }
-  if(bootstrap_lobby_get_source(b, upstream_peer))
+  if(bootstrap_lobby_get_source(b, source_peer))
   {
     print_error("Bootstrap call: Failed to get source\n");
     return 1;
@@ -316,12 +316,12 @@ int main(int argc, char* argv[])
   packet_table = g_hash_table_new(g_int_hash, g_int_equal);
 
   // Initiate connection to source
-  print_error ("source pid: %s", upstream_peer->pid);
-  print_error ("source ip: %s:%s", upstream_peer->addr, upstream_peer->port);
+  print_error ("source pid: %s", source_peer->pid);
+  print_error ("source ip: %s:%s", source_peer->addr, source_peer->port);
   char temp[EU_ADDRSTRLEN*4];
-  snprintf (temp, EU_ADDRSTRLEN*4, "tcp://%s:%s", upstream_peer->addr, upstream_peer->port);
-  upstream_sock = fn_initzmq (my_pid, temp);
-  fn_sendmsg(upstream_sock, REQ_JOIN, my_peer_info);
+  snprintf (temp, EU_ADDRSTRLEN*4, "tcp://%s:%s", source_peer->addr, source_peer->port);
+  source_zmq_sock = fn_initzmq (my_pid, temp);
+  fn_sendmsg(source_zmq_sock, REQ_JOIN, my_peer_info);
   
   pthread_t status_thread;
   pthread_t data_thread;
@@ -346,6 +346,9 @@ int main(int argc, char* argv[])
   bootstrap_cleanup(b);
   bootstrap_global_cleanup();
   free(my_peer_info);
-  free(upstream_peer);
+  free(source_peer);
+  fn_closesocket(source_zmq_sock);
+  if(source_zmq_sock)
+    free(source_zmq_sock);
   return 0;
 }
