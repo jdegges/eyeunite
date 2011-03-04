@@ -121,10 +121,12 @@ static void* data_thread(void *vptr) {
         return NULL;
       }
 
-      if (EU_PACKETLEN != eu_send (sock, &dpack, amount + sizeof (uint64_t), 0)) {
+      if (amount + sizeof (uint64_t) != eu_send (sock, &dpack, amount + sizeof (uint64_t), 0)) {
         print_error ("couldn't send full packet :/");
         return NULL;
       }
+
+      print_error ("sent packet (to %s:%s) with (seqnum, len) = (%lu, %lu)", pi->addr, pi->port, dpack.seqnum, amount + sizeof (uint64_t));
 
       alpha_queue_push (socks, sock);
     }
