@@ -1,94 +1,82 @@
-require 'zmq'
-
-function sleep(n)
-  local t0 = os.clock()
-  while os.clock() - t0 <= n do end
-end
-
--- Send a multipart message to the source like "type|msg"
-function send_request (sock, msg_type, msg)
-  sock:send (msg_type, zmq.SNDMORE)
-  sock:send (msg)
-end
-
--- Receive a multipart message from the source like "type|msg"
-function recv_request (sock, flags)
-  return sock:recv (flags), sock:recv (flags)
-end
+require 'eu'
+require 'socket'
 
 -- Handle the FOLLOW_NODE request
 function follow_node (msg)
-  print ("following \"" .. msg .. "\"")
+  --print ("following:", msg.pid, msg.addr, msg.port, msg.bandwidth)
 end
 
 -- Handle the FEED_NODE request
 function feed_node (msg)
-  print ("feeding \"" .. msg .. "\"")
+  --print ("feeding \"" .. msg.pid .. "\"")
+  downstream_nodes[msg.pid] = msg
 end
 
 -- Handle the DROP_NODE request
 function drop_node (msg)
-  print ("dropping \"" .. msg .. "\"")
+  --print ("dropping \"" .. msg.pid .. "\"")
+  downstream_nodes[msg.pid] = nil
 end
 
-local request_handler = {
-  FOLLOW_NODE = follow_node,
-  FEED_NODE = feed_node,
-  DROP_NODE = drop_node
-}
+local request_handler = {}
+request_handler[eu.FOLLOW_NODE] = follow_node
+request_handler[eu.FEED_NODE] = feed_node
+request_handler[eu.DROP_NODE] = drop_node
 
-function follow ()
-  -- Initialize OMQ context
-  local ctx = zmq.init (1)
+local fn = follower_init ("LUApid\0", "127.0.0.1\0\0\0\0", "1234567\0", "15000000")
 
-  -- Create a ZMQ_XREQ socket (http://www.zeromq.org/tutorials:xreq-and-xrep)
-  local sock = ctx:socket (zmq.XREQ)
+fn:connect ("127.0.0.1", "5555")
 
-  -- Set this followers identity (http://api.zeromq.org/zmq_setsockopt.html)
-  sock:setopt (zmq.IDENTITY, "follower!")
+fn:send_request (eu.REQ_JOIN)
 
-  -- Connect to the source node
-  sock:connect ("tcp://127.0.0.1:55555")
+-- create a socket to receive data from upstream provider
+local upstream_sock = socket.udp ()
+upstream_sock:setsockname ('*', "4567")
+upstream_sock:settimeout (1)
 
-  -- Send join request to the source
-  send_request (sock, "REQ_JOIN", "plzzzz")
+-- create a socket to send data downstream
+local downstream_sock = socket.udp ()
 
-  while true do
+-- create a table to store all downstream nodes
+local downstream_nodes = {}
 
-    local req_type
-    local req_msg
+local current_time = os.time ()
 
-    -- Non-blocking wait for source message
-    req_type, req_msg = recv_request (sock, zmq.NOBLOCK)
-    if req_type ~= nil and req_msg ~= nil then
-      request_handler[req_type] (req_msg)
-    end
+while true do
+  local msg_type
+  local msg
 
-    local rv = math.random ()
-    if rv < 0.85 then
-      -- Do nothing with 85% chance
-      sleep (1)
-    elseif rv < .99 then
-      -- Send move request with 14% chance
-      send_request (sock, "REQ_MOVE", "kthx")
-    else
-      -- Exit with 1% chance
-      send_request (sock, "REQ_EXIT", "bye")
-      break
-    end
-
+  if current_time + 10 < os.time () then
+    return 0
   end
 
-  req_type, req_msg = recv_request (sock, 0)
-  request_handler[req_type] (req_msg)
+  -- receive and handle messages from the source
+  msg_type, msg = fn:recv_request (zmq.NOBLOCK)
+  if nil ~= msg_type then
+    current_time = os.time ()
+    request_handler[msg_type] (msg)
+  end
 
-  -- Close socket
-  sock:close ()
+  -- try to get a udp packet from upstream
+  if nil ~= upstream_sock then
+    local packet = upstream_sock:receive ()
+    if nil ~= packet then
+      current_time = os.time ()
+      local length = packet:sub (1, 8)
+      local data = packet:sub (9, packet:len())
 
-  -- Free OMQ context
-  ctx:term ()
+      -- print out the data
+      io.write (data)
+
+      -- forward packet to followers
+      for index, peer in ipairs (downstream_nodes) do
+        local rv = downstream_sock:sendto (packet, peer.addr, peer.port)
+        if 1 ~= rv then
+          --print ("error sending packet to follower")
+          return 1
+        end
+      end
+    end
+  end
+
 end
-
-math.randomseed (os.time ())
-
-follow ()

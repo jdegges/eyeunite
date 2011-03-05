@@ -41,7 +41,7 @@ require 'zmq'
 -- ...
 
 eu = {
-  FOLLOW_NODE = "\0\0\0\0",
+  FOLLOW_NODE = "\1\0\0\0",
   FEED_NODE = "\2\0\0\0",
   DROP_NODE = "\3\0\0\0",
   REQ_MOVE = "\4\0\0\0",
@@ -105,7 +105,16 @@ end
 
 function follower_recv_request (follower, flags)
   local msg_type = follower.sock:recv (flags)
+  if nil == msg_type then
+    return nil
+  end
+
   local msg_data = follower.sock:recv (flags)
+  if nil == msg_data then
+    print ("absurd error")
+    return nil
+  end
+
   local msg = {
     pid = msg_data:sub (const.MSG_PID_START, const.MSG_PID_STOP),
     addr = msg_data:sub (const.MSG_ADDR_START, const.MSG_ADDR_STOP),
