@@ -58,6 +58,8 @@ eu_connect (struct eu_socket *sock, const char *node, const char *port)
     print_error ("error: can only bind to EU_PUSH socket");
     return -1;
   }
+  
+  if (0 < sock->fd) close (sock->fd);
 
   memset (&hints, 0, sizeof hints);
   hints.ai_family = AF_UNSPEC;

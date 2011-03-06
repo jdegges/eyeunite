@@ -82,13 +82,14 @@ static void* data_thread(void *vptr) {
   struct data_pack dpack;
   FILE* fp = fopen (media_file, "rb");
   struct alpha_queue *socks;
+  socks = alpha_queue_new();
 
   if (NULL == fp) {
     print_error ("error opening media file");
     return NULL;
   }
 
-  dpack.seqnum = 0;
+  dpack.seqnum = 1;
   for (;;) {
     size_t amount = fread (dpack.data, 1, EU_PACKETLEN - sizeof (uint64_t), fp);
     if (0 == amount) {
@@ -129,6 +130,8 @@ static void* data_thread(void *vptr) {
       print_error ("sent packet (to %s:%s) with (seqnum, len) = (%lu, %lu)", pi->addr, pi->port, dpack.seqnum, amount + sizeof (uint64_t));
 
       alpha_queue_push (socks, sock);
+      
+      usleep(50);
     }
 
     dpack.seqnum++;
