@@ -1,0 +1,38 @@
+Instructions for building the GUI with Qt Creator:
+1) Download Qt SDK at:
+
+  (Linux 32-bit)
+  http://get.qt.nokia.com/qtsdk/qt-sdk-linux-x86-opensource-2010.05.1.bin
+
+  (Linux 64 bit)
+  http://get.qt.nokia.com/qtsdk/qt-sdk-linux-x86_64-opensource-2010.05.1.bin
+
+2) Install SKD
+
+3) Open Qt Creator
+  File -> Open File or Project
+  Browse to eyeunite/qtgui/eyeunite-gui.pro (this is the project file)
+
+3a) (OPTIONAL) If you want a Vim-style editor, you can change this under
+  Edit->Advanced->Use Vim-style editing
+
+4) (OPTIONAL) If you want to compile a portable executable, then...
+  At the bottom left, click the computer icon, and change
+  Build: Debug
+
+  to
+
+  Build: Release
+
+5) Press the green arrow at the bottom left to make
+  (Alternatively, press Ctrl + R or do Build->Run)
+
+6) The final product should be in:
+  <qt-directory>/eyeunite-gui
+
+  OR (if in Release mode)
+
+  <qt-directory>/eyeunite-gui-build-desktop
+
+** NOTE: Please ignore the error messages for now. The program runs fine,
+but is complaining about how I close it. I'm looking into that.

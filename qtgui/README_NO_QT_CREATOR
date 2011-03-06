@@ -1,0 +1,9 @@
+Instructions to make without having to install Qt Creator:
+
+sudo apt-get install qt4-dev-tools
+cd <eyeunite-directory</qtgui
+make
+./eyeunite-gui
+
+** NOTE: Please ignore the error messages for now. The program runs fine,
+but is complaining about how I close it. I'm looking into that.
