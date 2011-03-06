@@ -5,12 +5,13 @@
 
 #define EU_TOKENSTRLEN 7
 #define EU_PORTSTRLEN 7
-#define EU_PACKETLEN ((1<<16)-1-8-20)
+#define EU_PACKETLEN 500
 #define EU_ADDRSTRLEN INET_ADDRSTRLEN
 #define EU_HOSTURLLEN (3+1+2+EU_ADDRSTRLEN+1+EU_PORTSTRLEN)
+#define MAX_DELAY 5
 
 #define FILELOC "log.txt"
-#define APP_ENGINE "http://defy.local:8080"
+#define APP_ENGINE "http://localhost:8080"
 
 struct peer_info
 {
