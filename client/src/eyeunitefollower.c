@@ -171,14 +171,14 @@ void* dataThread(void* arg)
       // Drops out of order packets that are behind the display thread
       if(!(rpack->dpack.seqnum < seqnum))
       {
-        alpha_queue_push(packet_table, rpack);
+        assert (alpha_queue_push(packet_table, rpack));
       }
 
       // Pushes all packets to downstream peers
       // XXX this should be done in another thread
-      pthread_mutex_lock(&downstream_peers_mutex);
-      push_data_to_peers(buf, len);
-      pthread_mutex_unlock(&downstream_peers_mutex);
+      //pthread_mutex_lock(&downstream_peers_mutex);
+      //push_data_to_peers(buf, len);
+      //pthread_mutex_unlock(&downstream_peers_mutex);
     }
     else
     {
@@ -329,6 +329,7 @@ int main(int argc, char* argv[])
   downstream_peers = NULL;
   num_downstream_peers = 0;
   packet_table = alpha_queue_new ();
+  assert (packet_table);
 
 
   // Initiate connection to source
