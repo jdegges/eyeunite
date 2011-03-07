@@ -28,7 +28,7 @@ eyeunitesource_LDADD += $(top_srcdir)/src/libbootstrap.la
 eyeunitesource_LDADD += $(top_srcdir)/src/libeasyudp.la
 
 bin_PROGRAMS += eyeunitefollower
-eyeunitefollower_SOURCES = eyeunitefollower.c
+eyeunitefollower_SOURCES = eyeunitefollower.c alpha_queue.c
 eyeunitefollower_LDADD = $(top_srcdir)/src/libfollowernode.la
 eyeunitefollower_LDADD += $(top_srcdir)/src/libbootstrap.la
 eyeunitefollower_LDADD += $(top_srcdir)/src/libeasyudp.la

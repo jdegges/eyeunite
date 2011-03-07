@@ -2,9 +2,9 @@
 #include <stdlib.h>
 #include <pthread.h>
 #include <string.h>
-#include <glib.h>
 #include <assert.h>
 
+#include "alpha_queue.h"
 #include "bootstrap.h"
 #include "followernode.h"
 #include "tree.h"
@@ -28,7 +28,7 @@ uint64_t seqnum = 0;
 uint64_t lastrec = 0;
 FILE* output_file = NULL;
 bool timestamps = false;
-GAsyncQueue *packet_table = NULL;
+struct alpha_queue *packet_table = NULL;
 
 struct recv_pack
 {
@@ -171,7 +171,7 @@ void* dataThread(void* arg)
       // Drops out of order packets that are behind the display thread
       if(!(rpack->dpack.seqnum < seqnum))
       {
-        g_async_queue_push(packet_table, rpack);
+        alpha_queue_push(packet_table, rpack);
       }
 
       // Pushes all packets to downstream peers
@@ -249,7 +249,7 @@ void* displayThread(void* arg)
         sleepOnce = false;
       }
 
-      struct recv_pack* rpack = g_async_queue_pop(packet_table);
+      struct recv_pack* rpack = alpha_queue_pop(packet_table);
       if(rpack != NULL)
       {
         // "Display" packet
@@ -287,8 +287,6 @@ int main(int argc, char* argv[])
   struct bootstrap* b;
   void* sock = NULL;
   char* lobby_token = NULL;
-
-  g_thread_init (NULL);
 
   if(argc < 4)
   {
@@ -333,7 +331,7 @@ int main(int argc, char* argv[])
   // Finish initialization
   downstream_peers = NULL;
   num_downstream_peers = 0;
-  packet_table = g_async_queue_new ();
+  packet_table = alpha_queue_new ();
 
 
   // Initiate connection to source
