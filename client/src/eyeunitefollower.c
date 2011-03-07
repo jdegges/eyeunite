@@ -2,6 +2,8 @@
 #include <stdlib.h>
 #include <pthread.h>
 #include <string.h>
+#include <glib.h>
+#include <assert.h>
 
 #include "bootstrap.h"
 #include "followernode.h"
@@ -10,8 +12,6 @@
 #include "easyudp.h"
 #include "alpha_queue.h"
 #include "time.h"
-
-#define MAP_SIZE 1024
 
 // Global variables for threads
 struct peer_info source_peer;
@@ -24,7 +24,8 @@ pthread_mutex_t source_peer_mutex = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t packet_buffer_mutex = PTHREAD_MUTEX_INITIALIZER;
 struct peer_info my_peer_info;
 int my_bw = 1;
-int seqnum = -1;
+uint64_t seqnum = 0;
+uint64_t lastrec = 0;
 FILE* output_file = NULL;
 bool timestamps = false;
 struct data_pack** packet_table = NULL;
@@ -152,22 +153,22 @@ void* dataThread(void* arg)
       memcpy(packet, buf, len);
 
       // Set the starting sequence number to the first packet that arrives
-      if(seqnum < 0)
+      if(seqnum == 0)
         seqnum = packet->seqnum;
+      
+      // Set last received
+      lastrec = packet->seqnum;
 
-      print_error ("got data packet with (seqnum, len) = (%lu, %ld)", packet->seqnum, len);
+      //print_error ("got data packet with (seqnum, len) = (%lu, %ld)", packet->seqnum, len);
 
       // Drops out of order packets that are behind the display thread
       if(!(packet->seqnum < seqnum))
       {
-        // Since the packet is stored at seqnum%MAP_SIZE, the seqnum field is
-        // not useful anymore. We substitute the length of the packet instead
-        int seq = packet->seqnum;
-        packet->seqnum = len;
-        print_error("storing packet %lu", seq);
-        //pthread_mutex_lock(&packet_buffer_mutex);
-        packet_table[seq%MAP_SIZE] = packet;
-        //pthread_mutex_unlock(&packet_buffer_mutex);
+        pthread_mutex_lock(&packet_buffer_mutex);
+        uint64_t tempseqnum = packet->seqnum;
+        packet->seqnum = len - sizeof(uint64_t);
+        g_hash_table_insert(packet_table, tempseqnum, packet);
+        pthread_mutex_unlock(&packet_buffer_mutex);
       }
 
       // Pushes all packets to downstream peers
@@ -233,9 +234,7 @@ void* statusThread(void* arg)
 void* displayThread(void* arg)
 {
   bool sleepOnce = true;
-  int delay_ms = 0; // Delay before "playback"
-  int timeout_ms = 20; // Stub value, replace later with better timeout interval
-  clock_t start;
+  int delay_ms = 2; // Delay before "playback"
   while(1)
   {
     if(seqnum >= 0)
@@ -245,15 +244,17 @@ void* displayThread(void* arg)
         sleep(delay_ms);
         sleepOnce = false;
       }
-      if(packet_table[seqnum%MAP_SIZE] != NULL)
+
+      struct data_pack* packet;
+      pthread_mutex_lock(&packet_buffer_mutex);
+      packet = g_hash_table_lookup(packet_table, seqnum);
+      pthread_mutex_unlock(&packet_buffer_mutex);
+      if(packet != NULL)
       {
         // Remove packet from hash table buffer
-        //pthread_mutex_lock(&packet_buffer_mutex);
-        struct data_pack* packet = packet_table[seqnum%MAP_SIZE];
-        packet_table[seqnum%MAP_SIZE] = NULL;
-        //pthread_mutex_unlock(&packet_buffer_mutex);
-        
-        print_error("Displaying packet (seqnum, len) = (%lu, %ld)", seqnum, packet->seqnum);
+        pthread_mutex_lock(&packet_buffer_mutex);
+        assert(g_hash_table_remove(packet_table, seqnum));
+        pthread_mutex_unlock(&packet_buffer_mutex);
 
         // "Display" packet
         if(timestamps)
@@ -263,22 +264,24 @@ void* displayThread(void* arg)
           fwrite(temp, 1, EU_PACKETLEN*2, output_file);
         }
         else
+	{
           fwrite(packet->data, 1, packet->seqnum, output_file);
-        fflush(output_file);
+	}
+
+	fflush(output_file);
         free(packet);
-        // free(packet); // Am I freeing too quickly?
-        start = clock();
         seqnum++;
       }
-      else if(clock() > start + timeout_ms * CLOCKS_PER_SEC * 1000);
+      else
       {
-        start = clock();
-        seqnum++;
+	if (lastrec >= seqnum + MAX_DELAY)	// Dropped packets need to be forgotten at some point
+	  seqnum++;
+	else
+	  usleep(100);				// TODO: Modify this to a proper value, it's used to give CPU a break
       }
     }
     else
-      start = clock();
-    usleep (50000);
+      usleep (1000);				// TODO: Modify this to a proper value, it's used to give CPU a break
   }
 }
 
@@ -332,9 +335,8 @@ int main(int argc, char* argv[])
   // Finish initialization
   downstream_peers = NULL;
   num_downstream_peers = 0;
-  packet_table = malloc(MAP_SIZE*sizeof(struct data_pack*));
-  for(i = 0; i < MAP_SIZE; i++)
-    packet_table[i] = NULL;
+  packet_table = g_hash_table_new(NULL, NULL);
+
 
   // Initiate connection to source
   print_error ("source pid: %s", source_peer.pid);
@@ -350,12 +352,10 @@ int main(int argc, char* argv[])
   upstream_eu_sock = eu_socket(EU_PULL);
   if (upstream_eu_sock == NULL)
   {
-    print_error ("absurd!");
+    print_error ("Couldn't bind to socket!");
     return 1;
   }
   eu_bind(upstream_eu_sock, my_peer_info.addr, my_peer_info.port);
-
-  sleep (1); // XXX: shouldn't be necessary.
 
   pthread_t status_thread;
   pthread_t data_thread;
@@ -375,7 +375,6 @@ int main(int argc, char* argv[])
   // Close sockets and free memory
   bootstrap_cleanup(b);
   bootstrap_global_cleanup();
-  free(temp);
   fn_closesocket(source_zmq_sock);
   close_all_peer_sockets();
   if(output_file != stdout)
