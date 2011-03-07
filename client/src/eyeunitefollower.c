@@ -28,7 +28,7 @@ uint64_t seqnum = 0;
 uint64_t lastrec = 0;
 FILE* output_file = NULL;
 bool timestamps = false;
-struct data_pack** packet_table = NULL;
+GAsyncQueue *packet_table = NULL;
 
 // Internal node to store peer_info, related eu_sock, and use in linked lists
 struct peer_node
@@ -167,7 +167,7 @@ void* dataThread(void* arg)
         pthread_mutex_lock(&packet_buffer_mutex);
         uint64_t tempseqnum = packet->seqnum;
         packet->seqnum = len - sizeof(uint64_t);
-        g_hash_table_insert(packet_table, tempseqnum, packet);
+        g_async_queue_push(packet_table, packet);
         pthread_mutex_unlock(&packet_buffer_mutex);
       }
 
@@ -247,15 +247,10 @@ void* displayThread(void* arg)
 
       struct data_pack* packet;
       pthread_mutex_lock(&packet_buffer_mutex);
-      packet = g_hash_table_lookup(packet_table, seqnum);
+      packet = g_async_queue_pop(packet_table);
       pthread_mutex_unlock(&packet_buffer_mutex);
       if(packet != NULL)
       {
-        // Remove packet from hash table buffer
-        pthread_mutex_lock(&packet_buffer_mutex);
-        assert(g_hash_table_remove(packet_table, seqnum));
-        pthread_mutex_unlock(&packet_buffer_mutex);
-
         // "Display" packet
         if(timestamps)
         {
@@ -335,7 +330,7 @@ int main(int argc, char* argv[])
   // Finish initialization
   downstream_peers = NULL;
   num_downstream_peers = 0;
-  packet_table = g_hash_table_new(NULL, NULL);
+  packet_table = g_async_queue_new ();
 
 
   // Initiate connection to source
@@ -355,7 +350,7 @@ int main(int argc, char* argv[])
     print_error ("Couldn't bind to socket!");
     return 1;
   }
-  eu_bind(upstream_eu_sock, my_peer_info.addr, my_peer_info.port);
+  eu_bind(upstream_eu_sock, NULL, my_peer_info.port);
 
   pthread_t status_thread;
   pthread_t data_thread;
