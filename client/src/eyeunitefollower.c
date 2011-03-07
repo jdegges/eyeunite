@@ -285,6 +285,8 @@ int main(int argc, char* argv[])
   void* sock = NULL;
   char* lobby_token = NULL;
 
+  print_error ("************* AQ-FOLLOWER *************");
+
   if(argc < 4)
   {
     printf("Usage:\n");
