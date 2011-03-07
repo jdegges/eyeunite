@@ -30,6 +30,12 @@ FILE* output_file = NULL;
 bool timestamps = false;
 struct data_pack** packet_table = NULL;
 
+
+uint64_t last_rec = 0;
+uint64_t trail = 0;
+int loopnum = 0;
+struct data_pack* receive_ar[BUFFER_SIZE];
+
 // Internal node to store peer_info, related eu_sock, and use in linked lists
 struct peer_node
 {
@@ -148,39 +154,27 @@ void* dataThread(void* arg)
     if(upstream_eu_sock && (len = eu_recv(upstream_eu_sock, buf, EU_PACKETLEN,
                                           0, from_addr, from_port)) > 0)
     {
+      
       // Converts char string buffer to packet struct
       struct data_pack* packet = (struct data_pack*)malloc(sizeof(struct data_pack));
       memcpy(packet, buf, len);
 
-      // Set the starting sequence number to the first packet that arrives
-      if(seqnum == 0)
-        seqnum = packet->seqnum;
-      
-      // Set last received
-      lastrec = packet->seqnum;
-
-      //print_error ("got data packet with (seqnum, len) = (%lu, %ld)", packet->seqnum, len);
-
-      // Drops out of order packets that are behind the display thread
-      if(!(packet->seqnum < seqnum))
-      {
-        pthread_mutex_lock(&packet_buffer_mutex);
-        uint64_t tempseqnum = packet->seqnum;
-        packet->seqnum = len - sizeof(uint64_t);
-        g_hash_table_insert(packet_table, tempseqnum, packet);
-        pthread_mutex_unlock(&packet_buffer_mutex);
-      }
-
-      // Pushes all packets to downstream peers
-      pthread_mutex_lock(&downstream_peers_mutex);
-      push_data_to_peers(buf, len);
-      pthread_mutex_unlock(&downstream_peers_mutex);
+      uint64_t tempseqnum = packet->seqnum;
+      print_error("Received packet %lu", tempseqnum);
+      packet->seqnum = len - sizeof(uint64_t);
+      uint64_t temp_index = tempseqnum % BUFFER_SIZE;
+      if (last_rec - BUFFER_SIZE < tempseqnum)
+	receive_ar[temp_index] = packet;
+      if (tempseqnum > last_rec)
+	last_rec = tempseqnum;
+      print_error("Last rec: %lu", last_rec);
     }
     else
     {
       print_error("absurd failure");
-      return NULL;
+      //return NULL;
     }
+    usleep(10);
   }
 }
 
@@ -233,55 +227,26 @@ void* statusThread(void* arg)
 
 void* displayThread(void* arg)
 {
-  bool sleepOnce = true;
-  int delay_ms = 2; // Delay before "playback"
   while(1)
   {
-    if(seqnum >= 0)
+    print_error("Trail %lu, Last rec %lu", trail, last_rec);
+    if(last_rec > (BUFFER_SIZE >> 1))
     {
-      if(sleepOnce)
-      {
-        sleep(delay_ms);
-        sleepOnce = false;
-      }
-
       struct data_pack* packet;
-      pthread_mutex_lock(&packet_buffer_mutex);
-      packet = g_hash_table_lookup(packet_table, seqnum);
-      pthread_mutex_unlock(&packet_buffer_mutex);
-      if(packet != NULL)
+      while (trail < (last_rec - (BUFFER_SIZE >> 1)))
       {
-        // Remove packet from hash table buffer
-        pthread_mutex_lock(&packet_buffer_mutex);
-        assert(g_hash_table_remove(packet_table, seqnum));
-        pthread_mutex_unlock(&packet_buffer_mutex);
-
-        // "Display" packet
-        if(timestamps)
-        {
-          char* temp[EU_PACKETLEN*2];
-          snprintf(temp, EU_PACKETLEN*2, "Packet [%lld]: %s", packet->seqnum, packet->data);
-          fwrite(temp, 1, EU_PACKETLEN*2, output_file);
-        }
-        else
+	packet = receive_ar[trail % BUFFER_SIZE];
+	if (packet != NULL)
 	{
-          fwrite(packet->data, 1, packet->seqnum, output_file);
+	  print_error("Printed %lu",fwrite(packet->data, 1, packet->seqnum, output_file));
+	  fflush(output_file);
+	  receive_ar[trail % BUFFER_SIZE] = NULL;
+	  free(packet);
 	}
-
-	fflush(output_file);
-        free(packet);
-        seqnum++;
-      }
-      else
-      {
-	if (lastrec >= seqnum + MAX_DELAY)	// Dropped packets need to be forgotten at some point
-	  seqnum++;
-	else
-	  usleep(100);				// TODO: Modify this to a proper value, it's used to give CPU a break
+	trail++;
+	print_error("Last_rec %lu trail %lu", last_rec, trail);
       }
     }
-    else
-      usleep (1000);				// TODO: Modify this to a proper value, it's used to give CPU a break
   }
 }
 
@@ -335,7 +300,15 @@ int main(int argc, char* argv[])
   // Finish initialization
   downstream_peers = NULL;
   num_downstream_peers = 0;
-  packet_table = g_hash_table_new(NULL, NULL);
+  
+  
+  // Initialize to NULL
+  for (last_rec = 0; last_rec < BUFFER_SIZE; last_rec++)
+  {
+    receive_ar[last_rec] = NULL;
+  }
+  last_rec = 0;
+  trail = BUFFER_SIZE >> 1;
 
 
   // Initiate connection to source
@@ -350,12 +323,13 @@ int main(int argc, char* argv[])
   // Bind to socket that will receive data (can be used without re-binding for
   // the duration of the program).
   upstream_eu_sock = eu_socket(EU_PULL);
+  
+  eu_bind(upstream_eu_sock, NULL, my_peer_info.port);
   if (upstream_eu_sock == NULL)
   {
     print_error ("Couldn't bind to socket!");
     return 1;
   }
-  eu_bind(upstream_eu_sock, my_peer_info.addr, my_peer_info.port);
 
   pthread_t status_thread;
   pthread_t data_thread;

@@ -8,10 +8,11 @@
 #define EU_PACKETLEN 500
 #define EU_ADDRSTRLEN INET_ADDRSTRLEN
 #define EU_HOSTURLLEN (3+1+2+EU_ADDRSTRLEN+1+EU_PORTSTRLEN)
-#define MAX_DELAY 5
+#define MAX_DELAY 100
+#define BUFFER_SIZE 256
 
 #define FILELOC "log.txt"
-#define APP_ENGINE "http://localhost:8080"
+#define APP_ENGINE "localhost:8080"
 
 struct peer_info
 {

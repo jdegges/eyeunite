@@ -98,7 +98,7 @@ static void* data_thread(void *vptr) {
     }
 
     while (0 == countRootChildren(tree)) {
-      sleep(10);		// Temporary to allow setup for tests
+      sleep(1);		// Temporary to allow setup for tests
       // do nothing.
     }
 
@@ -131,7 +131,7 @@ static void* data_thread(void *vptr) {
 
       alpha_queue_push (socks, sock);
       
-      usleep(50);
+      usleep(500);
     }
 
     dpack.seqnum++;
