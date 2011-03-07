@@ -1,6 +1,16 @@
 require 'eu'
 require 'socket'
 
+local my_pid = "LUApid"
+local my_addr = "131.179.144.43"
+local my_port = "50000"
+local my_bandwidth = "\209\183\163"
+
+local source_addr = "131.179.144.63"
+local source_port = "12345"
+
+local output_file = io.open ("output.mov", "wb")
+
 -- Handle the FOLLOW_NODE request
 function follow_node (msg)
   --print ("following:", msg.pid, msg.addr, msg.port, msg.bandwidth)
@@ -23,15 +33,14 @@ request_handler[eu.FOLLOW_NODE] = follow_node
 request_handler[eu.FEED_NODE] = feed_node
 request_handler[eu.DROP_NODE] = drop_node
 
-local fn = follower_init ("LUApid\0", "127.0.0.1\0\0\0\0", "1234567\0", "15000000")
-
-fn:connect ("127.0.0.1", "5555")
+local fn = follower_init (my_pid, my_addr, my_port, my_bandwidth)
+fn:connect (source_addr, source_port)
 
 fn:send_request (eu.REQ_JOIN)
 
 -- create a socket to receive data from upstream provider
 local upstream_sock = socket.udp ()
-upstream_sock:setsockname ('*', "4567")
+upstream_sock:setsockname ('*', my_port)
 upstream_sock:settimeout (1)
 
 -- create a socket to send data downstream
@@ -62,21 +71,20 @@ while true do
     local packet = upstream_sock:receive ()
     if nil ~= packet then
       current_time = os.time ()
-      local length = packet:sub (1, 8)
+      local sequence_number = packet:sub (1, 8)
       local data = packet:sub (9, packet:len())
 
       -- print out the data
-      io.write (data)
+      output_file:write (data)
 
       -- forward packet to followers
       for index, peer in ipairs (downstream_nodes) do
         local rv = downstream_sock:sendto (packet, peer.addr, peer.port)
-        if 1 ~= rv then
-          --print ("error sending packet to follower")
+        if nil == rv then
+          print ("error sending packet to follower")
           return 1
         end
       end
     end
   end
-
 end

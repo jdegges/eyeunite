@@ -1,74 +1,101 @@
-require 'zmq'
+require 'eu'
+require 'socket'
+require 'posix'
 
+local my_pid = "LUAsrc"
+local my_addr = "131.179.144.43"
+local my_port = "12345"
+local my_bandwidth = "\209\183\1"
 
--- Return sender ID and message body
-function recv_from (sock)
-  return sock:recv (), sock:recv (), sock:recv ()
-end
+local input_file = io.open ("arctcat.mpg", "rb")
+local input_bandwidth = "\209\183\1" -- measured in kBps (file size / duration)
+local packet_size = 500 -- measured in bytes
 
--- Send multipart message into the socket "id | msg"
-function send_to (sock, id, kind, msg)
-  sock:send (id, zmq.SNDMORE)
-  sock:send (kind, zmq.SNDMORE)
-  sock:send (msg)
-end
 
 -- Handle the REQ_MOVE request
-function req_move (sock, id, msg)
-  send_to (sock, id, "FOLLOW_NODE", "go go go")
+function req_move (msg)
+  --send_to (sock, id, "FOLLOW_NODE", "go go go")
 end
 
 -- Handle the REQ_JOIN request
-function req_join (sock, id, msg)
-  send_to (sock, id, "FOLLOW_NODE", "welcome " .. id)
+function req_join (msg)
+  --send_to (sock, id, "FOLLOW_NODE", "welcome " .. id)
+  sn:send_request (msg.pid, eu.FOLLOW_NODE, {pid = my_pid,
+                                             addr = my_addr,
+                                             port = my_port,
+                                             bandwidth = my_bandwidth})
+  downstream_nodes[msg.pid] = msg
+  print ("got join message from `" .. msg.pid .. "'")
 end
 
 -- Handle the REQ_EXIT request
-function req_exit (sock, id, msg)
-  send_to (sock, id, "DROP_NODE", "good bye " .. id)
+function req_exit (msg)
+  --send_to (sock, id, "DROP_NODE", "good bye " .. id)
 end
 
-local request_handler = {
-  REQ_MOVE = req_move,
-  REQ_JOIN = req_join,
-  REQ_EXIT = req_exit
-}
+local request_handler = {}
+request_handler[eu.REQ_MOVE] = req_move
+request_handler[eu.REQ_JOIN] = req_join
+request_handler[eu.REQ_EXIT] = req_exit
 
-function source ()
-  -- Initialize OMQ context
-  local ctx = zmq.init (1)
+local sn = source_init (my_pid, my_addr, my_port, my_bandwidth,
+                        input_bandwidth)
+if nil == sn then
+  print ("error initializing the source")
+  return 1
+end
 
-  -- Create a ZMQ_XREP socket (http://www.zeromq.org/tutorials:xreq-and-xrep)
-  local sock = ctx:socket (zmq.XREP)
+-- create a socket to send data downstream
+local downstream_sock = socket.udp ()
 
-  -- Set this followers identity (http://api.zeromq.org/zmq_setsockopt.html)
-  sock:setopt (zmq.IDENTITY, "source!")
+-- create a table to store all downstream nodes
+local downstream_nodes = {}
 
-  -- Start listening for requests on port 55555 (thats five 5s)
-  sock:bind ("tcp://*:55555")
+local current_time = os.time ()
+local sequence_number = 1
+local seqnum_length = 8
 
-  while true do
+while true do
 
-    local req_id
-    local req_type
-    local req_msg
+  local from_pid
+  local msg_type
+  local msg_body
 
-    -- Wait for request to come in
-    req_id, req_type, req_msg = recv_from (sock)
-    print ("got \"" .. req_type .. "\" request: \"" .. req_msg ..
-           "\" from \"" .. req_id .. "\"")
+  -- receive and handle messages from follower nodes
+  from_pid, msg_type, msg_body = sn:recv_request (zmq.NOBLOCK)
+  if nil ~= from_pid then
+    if nil ~= msg_body and from_pid ~= msg_body.pid then
+      print ("absurd error")
+      return 1
+    end
 
-    -- Handle the request
-    request_handler[req_type] (sock, req_id, req_msg)
-
+    request_handler[msg_type] (msg_body)
   end
 
-  -- Close socket
-  sock:close ()
+  -- read in a chunk of data from input file
+  local packet_data = input_file:read (packet_size - seqnum_length)
+  if nil == packet_data then
+    print ("end of file")
+    break
+  end
 
-  -- Free OMQ context
-  ctx:term ()
+  local packet = string.sub (sequence_number .. string.rep ('\0', seqnum_length),
+                             1, seqnum_length) .. packet_data
+
+  -- forward packet to followers
+  for index, peer in ipairs (downstream_nodes) do
+    local rv = downstream_sock:sendto (packet, peer.addr, peer.port)
+    if nil == rv then
+      print ("error sending packet to follower")
+      return 1
+    end
+  end
+
+  posix.usleep (3000) -- packet_size / (input_bandwidth * 0.001024))
+
+  sequence_number = sequence_number + 1
 
 end
 
-source ()
+input_file:close ()
+sn:close ()
