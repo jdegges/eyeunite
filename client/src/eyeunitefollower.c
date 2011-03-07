@@ -21,7 +21,7 @@ struct peer_node* downstream_peers = NULL;
 size_t num_downstream_peers = 0;
 pthread_mutex_t downstream_peers_mutex = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t source_peer_mutex = PTHREAD_MUTEX_INITIALIZER;
-pthread_mutex_t packet_buffer_mutex = PTHREAD_MUTEX_INITIALIZER;
+//pthread_mutex_t packet_buffer_mutex = PTHREAD_MUTEX_INITIALIZER;
 struct peer_info my_peer_info;
 int my_bw = 1;
 uint64_t seqnum = 0;
@@ -29,6 +29,12 @@ uint64_t lastrec = 0;
 FILE* output_file = NULL;
 bool timestamps = false;
 GAsyncQueue *packet_table = NULL;
+
+struct recv_pack
+{
+  uint64_t length;
+  struct data_pack dpack;
+};
 
 // Internal node to store peer_info, related eu_sock, and use in linked lists
 struct peer_node
@@ -48,8 +54,8 @@ struct peer_node* peer_node(struct peer_info node_params)
   if(eu_connect(pn->eu_sock, node_params.addr, node_params.port))
   {
     print_error("Failed to conncet to peer %s", node_params.pid);
-	  eu_close(pn->eu_sock);
-	  return NULL;
+    eu_close(pn->eu_sock);
+    return NULL;
   }
   pn->next = NULL;
   return pn;
@@ -149,29 +155,27 @@ void* dataThread(void* arg)
                                           0, from_addr, from_port)) > 0)
     {
       // Converts char string buffer to packet struct
-      struct data_pack* packet = (struct data_pack*)malloc(sizeof(struct data_pack));
-      memcpy(packet, buf, len);
+      struct recv_pack* rpack = malloc(sizeof *rpack);
+      memcpy(rpack, buf, len);
+      rpack->length = len - sizeof rpack->dpack.seqnum;
 
       // Set the starting sequence number to the first packet that arrives
       if(seqnum == 0)
-        seqnum = packet->seqnum;
+        seqnum = rpack->dpack.seqnum;
       
       // Set last received
-      lastrec = packet->seqnum;
+      lastrec = seqnum;
 
       //print_error ("got data packet with (seqnum, len) = (%lu, %ld)", packet->seqnum, len);
 
       // Drops out of order packets that are behind the display thread
-      if(!(packet->seqnum < seqnum))
+      if(!(rpack->dpack.seqnum < seqnum))
       {
-        pthread_mutex_lock(&packet_buffer_mutex);
-        uint64_t tempseqnum = packet->seqnum;
-        packet->seqnum = len - sizeof(uint64_t);
-        g_async_queue_push(packet_table, packet);
-        pthread_mutex_unlock(&packet_buffer_mutex);
+        g_async_queue_push(packet_table, rpack);
       }
 
       // Pushes all packets to downstream peers
+      // XXX this should be done in another thread
       pthread_mutex_lock(&downstream_peers_mutex);
       push_data_to_peers(buf, len);
       pthread_mutex_unlock(&downstream_peers_mutex);
@@ -245,38 +249,35 @@ void* displayThread(void* arg)
         sleepOnce = false;
       }
 
-      struct data_pack* packet;
-      pthread_mutex_lock(&packet_buffer_mutex);
-      packet = g_async_queue_pop(packet_table);
-      pthread_mutex_unlock(&packet_buffer_mutex);
-      if(packet != NULL)
+      struct recv_pack* rpack = g_async_queue_pop(packet_table);
+      if(rpack != NULL)
       {
         // "Display" packet
         if(timestamps)
         {
           char* temp[EU_PACKETLEN*2];
-          snprintf(temp, EU_PACKETLEN*2, "Packet [%lld]: %s", packet->seqnum, packet->data);
+          snprintf(temp, EU_PACKETLEN*2, "Packet [%lld]: %s", rpack->dpack.seqnum, rpack->dpack.data);
           fwrite(temp, 1, EU_PACKETLEN*2, output_file);
         }
         else
-	{
-          fwrite(packet->data, 1, packet->seqnum, output_file);
-	}
+        {
+          fwrite(rpack->dpack.data, 1, rpack->length, output_file);
+        }
 
-	fflush(output_file);
-        free(packet);
+        fflush(output_file);
+        free(rpack);
         seqnum++;
       }
       else
       {
-	if (lastrec >= seqnum + MAX_DELAY)	// Dropped packets need to be forgotten at some point
-	  seqnum++;
-	else
-	  usleep(100);				// TODO: Modify this to a proper value, it's used to give CPU a break
+        if (lastrec >= seqnum + MAX_DELAY)  // Dropped packets need to be forgotten at some point
+          seqnum++;
+        else
+          usleep(100);        // TODO: Modify this to a proper value, it's used to give CPU a break
       }
     }
     else
-      usleep (1000);				// TODO: Modify this to a proper value, it's used to give CPU a break
+      usleep (1000);        // TODO: Modify this to a proper value, it's used to give CPU a break
   }
 }
 
