@@ -97,6 +97,7 @@ static struct node_t *locateEmpty(struct node_t *root)
   queue = alpha_queue_new();
   temp = root;
 
+  // Breadth-first search using queue, looking for parent with room for children
   while(find == NULL) {
     if( list_count (temp->children) < temp->max_c)
       find = temp;
@@ -148,6 +149,7 @@ static struct node_t *findPeer(struct node_t *root, char pid[])
   queue = alpha_queue_new();
   temp = root;
 
+  // Breadth-first search using queue, looking for a peer in the tree
   do{
     if(strcmp(pid, temp->p_info.pid) == 0)
       find = temp;
@@ -188,6 +190,7 @@ static struct node_t *getLeaf(struct node_t *root)
   queue = alpha_queue_new();
   temp = root;
 
+  // Breadth-first search using queue, looking for a leaf node (can support 0 children)
   while(find == NULL) {
     if( temp->max_c == 0)
       find = temp;
@@ -213,7 +216,9 @@ static struct node_t *getLeaf(struct node_t *root)
 }
 
 /*
-* This function moves a new user up the tree until their parent supports more nodes than them, or under root
+* This function moves a new user up the tree until their parent supports more nodes than them, or under root.
+* Used in addPeer and movePeer to get peers who can support lots of others higher positions in the tree, thus
+* decreasing their chances of their stream getting cut by others above them.
 * Returns the node it will replace, and new node will take them as a child.
 * Returns pointer to new input if it doesnt need to replace anyone.
 */
@@ -239,14 +244,14 @@ int addPeer(struct tree_t *tree, int peerbw, char pid[], char addr[], char port[
   struct node_t *replace;
   struct node_t *leaf = NULL;
 
-  
+  // See if the node already exists
   struct node_t *temp = findPeer(tree->root, pid);
   if (temp == NULL)
     return -1;
   if (temp != tree->root)
     return 0;
 
-  // try to find empty slot to attach to, or switch with a leaf if no empty spot
+  // Try to find an empty spot on tree
   parent = locateEmpty( tree->root);
   if( parent == NULL)
     return -1;
@@ -255,10 +260,11 @@ int addPeer(struct tree_t *tree, int peerbw, char pid[], char addr[], char port[
     if ( (peerbw / tree->streambw) == 0)
       return -2; // cant switch with leaf because new node cant support anyone either
 
+    // If no empty spots, get a leaf node to switch with
     leaf = getLeaf( tree->root);
     if(leaf == NULL)
       return -1;
-    if(leaf == tree->root) //no leaf found, should never happen, since we call locateEmpty beforehand
+    if(leaf == tree->root) //no leaf found, should never happen, since we called locateEmpty already
       return -2;
     parent = leaf->parent;
   }
@@ -274,12 +280,14 @@ int addPeer(struct tree_t *tree, int peerbw, char pid[], char addr[], char port[
   strcpy(new->p_info.addr, addr);
   strcpy(new->p_info.port, port);
 
+  // See how far you can switch up the tree
   int extra = (leaf == NULL ? 0 : 1); // must account for leaf also
   replace = switchUp(tree->root, new, extra);
 
   if ( leaf != NULL)
     clearParent(leaf);
 
+  // If its switching up, assume their children, and set them as one of your children
   if(replace != new)
   {
     clearParent(replace);
@@ -298,15 +306,17 @@ int addPeer(struct tree_t *tree, int peerbw, char pid[], char addr[], char port[
     }
   }
   
+  // Add the new node to its parents list
   list_add (new->parent->children, (void*)new);
 
+  // If we replaced a leaf, add him as our child
   if (leaf != NULL)
   {
     list_add (new->children, (void*)leaf);
     leaf->parent = new;
   }
 
-  //parent now points to leafs old parent (if there was a leaf)
+  // Send out appropriate messages
   if (tree->debug == 0)
   {
     sn_sendmsg ( tree->socket, new->p_info.pid, FOLLOW_NODE, &(new->parent->p_info));
@@ -332,28 +342,124 @@ int addPeer(struct tree_t *tree, int peerbw, char pid[], char addr[], char port[
 }
 
 
+
+/*
+* Helper function for removePeer. Takes tree and node, and 
+* adds node to tree without worrying about its current parent.
+* Similar to move peer, without oldparent
+*/
+static int removeAdd(struct tree_t *tree, struct node_t *add)
+{
+  struct node_t *newparent;
+  struct node_t *leaf = NULL;
+  struct node_t *replace;
+
+  // Find a new empty spot in tree
+  newparent = locateEmpty(tree->root);
+  if (newparent == NULL)
+    return -1;
+  if ((newparent == tree->root) && (tree->root->max_c == list_count( tree->root->children))) // If no empty spots are found
+  {
+    if (add->max_c == 0 || list_count (add->children) == add->max_c) //might want to drop leaf if he has full children list
+      return -3;
+
+    // Look for a leaf if no empty spots
+    leaf = getLeaf (tree->root);
+    if (leaf == NULL)
+      return -1;
+    if (leaf == tree->root) //no leaf found, should never happen, since we called locateEmpty already
+      return -3;
+
+    newparent = leaf->parent;
+  }
+
+  add->parent = newparent;
+
+  // See how far we can switch up in the new spot
+  int extra = list_count(add->children) + (leaf == NULL ? 0 : 1); // must account for current # chlidren and possible leaf
+  replace = switchUp(tree->root, add, extra);
+
+  if ( leaf != NULL)
+    clearParent(leaf);
+
+  // If replacing someone, take all their children and also feed the one you're replacing
+  if(replace != add)
+  {
+    clearParent(replace);
+    add->parent = replace->parent;
+    replace->parent = add;
+
+    list_add (add->children, (void*)replace);
+    while (list_count (replace->children) > 0)
+    {
+      struct node_t *child = (struct node_t*)list_get (replace->children, 0);
+      list_add (add->children, (void*)child);
+      list_remove_item (replace->children, 0);
+      child->parent = add;
+    }
+
+  }
+
+  // Add moved node to new parent
+  list_add (add->parent->children, (void*)add);
+
+  // If we took leaf's spot, add him to our children
+  if (leaf != NULL)
+  {
+    list_add (add->children, (void*)leaf);
+    leaf->parent = add;
+  }
+
+  // Send appropriate messages
+  if (tree->debug == 0) {
+    sn_sendmsg ( tree->socket, add->p_info.pid, FOLLOW_NODE, &(add->parent->p_info));
+    sn_sendmsg ( tree->socket, add->parent->p_info.pid, FEED_NODE, &(add->p_info));
+
+    if ( replace != NULL)
+      sn_sendmsg ( tree->socket, add->parent->p_info.pid, DROP_NODE, &(replace->p_info));
+    
+    int i;
+    for (i = 0; i < list_count (add->children); i++)
+    {
+      struct node_t *child = list_get (add->children, i);
+      sn_sendmsg ( tree->socket, child->p_info.pid, FOLLOW_NODE, &(add->p_info));
+      sn_sendmsg ( tree->socket, add->p_info.pid, FEED_NODE, &(child->p_info));
+      if (replace != add && child != leaf)
+        sn_sendmsg (tree->socket, replace->p_info.pid, DROP_NODE, &(child->p_info));
+    }
+
+    if ( leaf != NULL)
+      sn_sendmsg ( tree->socket, newparent->p_info.pid, DROP_NODE, &(leaf->p_info));
+  }
+}
+
 int removePeer(struct tree_t *tree, char pid[])
 {
   struct node_t *remove;
+  struct node_t *max;
   struct node_t *child;
   int i;
 
+  // Find the peer to be removed
   remove = findPeer(tree->root, pid);
 
-  if(remove == NULL)
+  if (remove == NULL)
     return -1;
-  if(remove == tree->root)
+  if (remove == tree->root) // Peer not found, return success
     return 0;
+
+  clearParent(remove);
+
+  for (i = 0; i < list_count (remove->children); i++)
+  {
+    struct node_t *child = list_get (remove->children, i);
+    removeAdd(tree, child);
+  }
 
   // find a peer in subtree to take my spot.. (most open spots)
   // if enough open spots, give all children to subtree find
   // if not, move enough children to fit the rest in subtree find
-  while ( list_count (remove->children) > 0){
-    child = (struct node_t*)list_get( remove->children, 0);
-    movePeer(tree, child->p_info.pid);
-  }
-
-  clearParent(remove);
+  
   nodefree(remove);
 
   if (tree->debug == 0) {
@@ -363,6 +469,7 @@ int removePeer(struct tree_t *tree, char pid[])
   return 0;
 }
 
+
 int movePeer(struct tree_t *tree, char pid[])
 {
   struct node_t *newparent;
@@ -371,29 +478,33 @@ int movePeer(struct tree_t *tree, char pid[])
   struct node_t *leaf = NULL;
   struct node_t *replace;
 
+  // Find the pair to be moved
   move = findPeer(tree->root, pid);
 
   if( move == NULL)
     return -1;
-  if( move == tree->root)
+  if( move == tree->root) // If not in tree, return error code -2
     return -2;
 
+  // Change parent's max children who was sending bad feed
   oldparent = move->parent;
   oldparent->max_c = list_count (oldparent->children) - 1;
   clearParent(move);
 
+  // Find a new empty spot in tree
   newparent = locateEmpty(tree->root);
   if (newparent == NULL)
     return -1;
-  if ((newparent == tree->root) && (tree->root->max_c == list_count( tree->root->children)))
+  if ((newparent == tree->root) && (tree->root->max_c == list_count( tree->root->children))) // If no empty spots are found
   {
-    if ((move->p_info.peerbw / tree->streambw) == 0 || list_count (move->children) == move->max_c) //might want to drop leaf if he has full children list
+    if (move->max_c == 0 || list_count (move->children) == move->max_c) //might want to drop leaf if he has full children list
       return -3;
 
+    // Look for a leaf if no empty spots
     leaf = getLeaf (tree->root);
     if (leaf == NULL)
       return -1;
-    if (leaf == tree->root) //no leaf found, should never happen, since we call locateEmpty beforehand
+    if (leaf == tree->root) //no leaf found, should never happen, since we called locateEmpty already
       return -3;
 
     newparent = leaf->parent;
@@ -401,12 +512,14 @@ int movePeer(struct tree_t *tree, char pid[])
 
   move->parent = newparent;
 
+  // See how far we can switch up in the new spot
   int extra = list_count(move->children) + (leaf == NULL ? 0 : 1); // must account for current # chlidren and possible leaf
   replace = switchUp(tree->root, move, extra);
 
   if ( leaf != NULL)
     clearParent(leaf);
 
+  // If replacing someone, take all their children and also feed the one you're replacing
   if(replace != move)
   {
     clearParent(replace);
@@ -424,17 +537,20 @@ int movePeer(struct tree_t *tree, char pid[])
 
   }
 
+  // Add moved node to new parent
   list_add (move->parent->children, (void*)move);
 
+  // If we took leaf's spot, add him to our children
   if (leaf != NULL)
   {
     list_add (move->children, (void*)leaf);
     leaf->parent = move;
   }
 
+  // Send appropriate messages
   if (tree->debug == 0) {
-    sn_sendmsg ( tree->socket, move->parent->p_info.pid, FEED_NODE, &(move->p_info));
     sn_sendmsg ( tree->socket, move->p_info.pid, FOLLOW_NODE, &(move->parent->p_info));
+    sn_sendmsg ( tree->socket, move->parent->p_info.pid, FEED_NODE, &(move->p_info));
     sn_sendmsg ( tree->socket, oldparent->p_info.pid, DROP_NODE, &(move->p_info));
 
     if ( replace != NULL)
@@ -456,7 +572,7 @@ int movePeer(struct tree_t *tree, char pid[])
 }
 
 /*
-* Used to free tree from root
+* Used to free tree starting from root
 */
 static void freeRoot(struct node_t *root)
 {
