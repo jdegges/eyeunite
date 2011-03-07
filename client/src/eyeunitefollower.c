@@ -270,10 +270,7 @@ void* displayThread(void* arg)
       }
       else
       {
-        if (lastrec >= seqnum + MAX_DELAY)  // Dropped packets need to be forgotten at some point
-          seqnum++;
-        else
-          usleep(100);        // TODO: Modify this to a proper value, it's used to give CPU a break
+        usleep(100);        // TODO: Modify this to a proper value, it's used to give CPU a break
       }
     }
     else
