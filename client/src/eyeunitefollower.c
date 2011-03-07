@@ -13,8 +13,6 @@
 #include "alpha_queue.h"
 #include "time.h"
 
-#define MAP_SIZE 1024
-
 // Global variables for threads
 struct peer_info source_peer;
 void* source_zmq_sock = NULL;
@@ -25,13 +23,9 @@ pthread_mutex_t downstream_peers_mutex = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t source_peer_mutex = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t packet_buffer_mutex = PTHREAD_MUTEX_INITIALIZER;
 struct peer_info my_peer_info;
-<<<<<<< HEAD
 int my_bw = 1;
-int seqnum = -1;
-=======
 uint64_t seqnum = 0;
 uint64_t lastrec = 0;
->>>>>>> followertoo
 FILE* output_file = NULL;
 bool timestamps = false;
 struct data_pack** packet_table = NULL;
@@ -165,7 +159,7 @@ void* dataThread(void* arg)
       // Set last received
       lastrec = packet->seqnum;
 
-      print_error ("got data packet with (seqnum, len) = (%lu, %ld)", packet->seqnum, len);
+      //print_error ("got data packet with (seqnum, len) = (%lu, %ld)", packet->seqnum, len);
 
       // Drops out of order packets that are behind the display thread
       if(!(packet->seqnum < seqnum))
@@ -270,7 +264,9 @@ void* displayThread(void* arg)
           fwrite(temp, 1, EU_PACKETLEN*2, output_file);
         }
         else
+	{
           fwrite(packet->data, 1, packet->seqnum, output_file);
+	}
 
 	fflush(output_file);
         free(packet);
@@ -379,7 +375,6 @@ int main(int argc, char* argv[])
   // Close sockets and free memory
   bootstrap_cleanup(b);
   bootstrap_global_cleanup();
-  free(temp);
   fn_closesocket(source_zmq_sock);
   close_all_peer_sockets();
   if(output_file != stdout)

@@ -98,7 +98,7 @@ static void* data_thread(void *vptr) {
     }
 
     while (0 == countRootChildren(tree)) {
-      usleep (200000);
+      sleep(10);		// Temporary to allow setup for tests
       // do nothing.
     }
 
