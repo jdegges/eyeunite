@@ -288,6 +288,8 @@ int main(int argc, char* argv[])
   void* sock = NULL;
   char* lobby_token = NULL;
 
+  g_thread_init (NULL);
+
   if(argc < 4)
   {
     printf("Usage:\n");
