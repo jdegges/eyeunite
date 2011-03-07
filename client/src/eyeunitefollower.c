@@ -147,16 +147,15 @@ void* dataThread(void* arg)
   char buf[EU_PACKETLEN];
   while(1)
   {
+    struct recv_pack *rpack = malloc (sizeof *rpack);
     char from_addr[EU_ADDRSTRLEN];
     char from_port[EU_PORTSTRLEN];
 
     // Blocking recv
-    if(upstream_eu_sock && (len = eu_recv(upstream_eu_sock, buf, EU_PACKETLEN,
+    if(upstream_eu_sock && (len = eu_recv(upstream_eu_sock, &rpack->dpack, EU_PACKETLEN,
                                           0, from_addr, from_port)) > 0)
     {
       // Converts char string buffer to packet struct
-      struct recv_pack* rpack = malloc(sizeof *rpack);
-      memcpy(rpack, buf, len);
       rpack->length = len - sizeof rpack->dpack.seqnum;
 
       // Set the starting sequence number to the first packet that arrives
