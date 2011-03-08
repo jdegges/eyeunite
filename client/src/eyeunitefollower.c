@@ -27,6 +27,7 @@ int my_bw = 1;
 uint64_t seqnum = 0;
 uint64_t lastrec = 0;
 FILE* output_file = NULL;
+FILE* logger = NULL;
 bool timestamps = false;
 struct data_pack** packet_table = NULL;
 
@@ -35,6 +36,8 @@ uint64_t last_rec = 0;
 uint64_t trail = 0;
 int loopnum = 0;
 struct data_pack* receive_ar[BUFFER_SIZE];
+
+void displayThread();
 
 // Internal node to store peer_info, related eu_sock, and use in linked lists
 struct peer_node
@@ -158,23 +161,26 @@ void* dataThread(void* arg)
       // Converts char string buffer to packet struct
       struct data_pack* packet = (struct data_pack*)malloc(sizeof(struct data_pack));
       memcpy(packet, buf, len);
-
       uint64_t tempseqnum = packet->seqnum;
-      print_error("Received packet %lu", tempseqnum);
       packet->seqnum = len - sizeof(uint64_t);
       uint64_t temp_index = tempseqnum % BUFFER_SIZE;
-      if (last_rec - BUFFER_SIZE < tempseqnum)
+      if (last_rec < BUFFER_SIZE || last_rec - BUFFER_SIZE < tempseqnum)
 	receive_ar[temp_index] = packet;
+      else
+      {
+	char temp[EU_ADDRSTRLEN*4];
+	int len = snprintf(temp, EU_ADDRSTRLEN*4, "Didn't put %lu in array\n", temp_index);
+	fwrite(temp, 1, len, logger);
+      }
       if (tempseqnum > last_rec)
 	last_rec = tempseqnum;
-      print_error("Last rec: %lu", last_rec);
+      displayThread();
     }
     else
     {
       print_error("absurd failure");
-      //return NULL;
+      return NULL;
     }
-    usleep(10);
   }
 }
 
@@ -225,29 +231,35 @@ void* statusThread(void* arg)
   }
 }
 
-void* displayThread(void* arg)
+//void* displayThread(void* arg)
+void displayThread()
 {
-  while(1)
-  {
-    print_error("Trail %lu, Last rec %lu", trail, last_rec);
+  //while(1)
+  //{
     if(last_rec > (BUFFER_SIZE >> 1))
     {
       struct data_pack* packet;
-      while (trail < (last_rec - (BUFFER_SIZE >> 1)))
+      while (trail + (BUFFER_SIZE >> 1) < last_rec)
       {
 	packet = receive_ar[trail % BUFFER_SIZE];
 	if (packet != NULL)
 	{
-	  print_error("Printed %lu",fwrite(packet->data, 1, packet->seqnum, output_file));
+	  fwrite(packet->data, 1, packet->seqnum, output_file);
 	  fflush(output_file);
 	  receive_ar[trail % BUFFER_SIZE] = NULL;
 	  free(packet);
 	}
+	else
+	{
+	  char temp[EU_ADDRSTRLEN*4];
+	  int len = snprintf(temp, EU_ADDRSTRLEN*4, "DROPPED SEQUENCE %lu CURRENT LAST %lu\n", trail, last_rec);
+	  fwrite(temp ,1,len, logger);
+	  fflush(logger);
+	}
 	trail++;
-	print_error("Last_rec %lu trail %lu", last_rec, trail);
       }
     }
-  }
+  //}
 }
 
 int main(int argc, char* argv[])
@@ -273,7 +285,7 @@ int main(int argc, char* argv[])
     if(strcmp(argv[4], "--debug") == 0)
       timestamps == true;
     else
-      output_file = fopen(argv[4], "ab");
+      output_file = fopen(argv[4], "w+");
   }
   if(argc >= 6 && (strcmp(argv[5], "--debug") == 0))
     timestamps = true;
@@ -300,15 +312,15 @@ int main(int argc, char* argv[])
   // Finish initialization
   downstream_peers = NULL;
   num_downstream_peers = 0;
-  
+  logger = fopen("log.txt", "ab");
   
   // Initialize to NULL
   for (last_rec = 0; last_rec < BUFFER_SIZE; last_rec++)
   {
     receive_ar[last_rec] = NULL;
   }
-  last_rec = 0;
-  trail = BUFFER_SIZE >> 1;
+  last_rec = 1;
+  trail = 1;
 
 
   // Initiate connection to source
@@ -333,18 +345,18 @@ int main(int argc, char* argv[])
 
   pthread_t status_thread;
   pthread_t data_thread;
-  pthread_t display_thread;
+  //pthread_t display_thread;
 
   // Start status thread
   pthread_create(&status_thread, NULL, statusThread, NULL);
   pthread_create(&data_thread, NULL, dataThread, NULL);
-  pthread_create(&display_thread, NULL, displayThread, NULL);
+  //pthread_create(&display_thread, NULL, displayThread, NULL);
 
 
   // Clean up at termination
   pthread_join(status_thread, NULL);
   pthread_join(data_thread, NULL);
-  pthread_join(display_thread, NULL);
+  //pthread_join(display_thread, NULL);
 
   // Close sockets and free memory
   bootstrap_cleanup(b);
