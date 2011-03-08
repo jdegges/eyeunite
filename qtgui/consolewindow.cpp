@@ -14,6 +14,7 @@ ConsoleWindow::ConsoleWindow(QWidget *parent, const QString &exec_name, const QS
     ui(new Ui::ConsoleWindow)
 {
     ui->setupUi(this);
+    qApp->installEventFilter(this);
     m_follower = follower;
     this->setAttribute(Qt::WA_DeleteOnClose, true);
     setWindowTitle("Console: " + exec_name);
@@ -43,6 +44,20 @@ ConsoleWindow::~ConsoleWindow()
       delete vlc_proc;
     delete process;
     delete ui;
+}
+
+bool ConsoleWindow::eventFilter(QObject* o, QEvent *e)
+{
+  if(e->type()  == QEvent::KeyPress)
+  {
+    QKeyEvent *ke = static_cast<QKeyEvent *>(e);
+    if(ke->key() == Qt::Key_Escape)
+    {
+        this->close();
+        return true;
+    }
+  }
+  return QObject::eventFilter(o, e);
 }
 
 void ConsoleWindow::readOutput()

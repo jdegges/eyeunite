@@ -3,6 +3,8 @@
 
 #include <QMainWindow>
 #include <QProcess>
+#include <QEvent>
+#include <QKeyEvent>
 
 namespace Ui {
     class ConsoleWindow;
@@ -22,6 +24,9 @@ public slots:
     void readError();
     void clearLog();
     void killProcess();
+
+protected:
+    bool eventFilter(QObject *o, QEvent *e);
 
 private:
     Ui::ConsoleWindow *ui;

@@ -7,23 +7,50 @@ MainWindow::MainWindow(QWidget *parent) :
     ui(new Ui::MainWindow)
 {
     ui->setupUi(this);
-    this->setAttribute(Qt::WA_DeleteOnClose, true);
+    setAttribute(Qt::WA_DeleteOnClose, true);
 
     exec_name = "./eyeunitesource";
 
-    this->setTabOrder(ui->addr, ui->port);
-
+    qApp->installEventFilter(this);
     ui->addr->setFocus();
-    ui->pushButton->setDefault(true);
 
     connect(ui->pushButton, SIGNAL(clicked()), this, SLOT(spawnProcess()));
     connect(ui->sourceButton, SIGNAL(clicked()), this, SLOT(setExec_Source()));
     connect(ui->followerButton, SIGNAL(clicked()), this, SLOT(setExec_Follower()));
+
+    eyeuniteIcon = new QIcon("./statusicon.png");
+    setWindowIcon(*eyeuniteIcon);
+
+
+    trayIcon = new QSystemTrayIcon(*eyeuniteIcon);
+    trayIcon->show();
+    trayIcon->setIcon(*eyeuniteIcon);
 }
 
 MainWindow::~MainWindow()
 {
+    delete eyeuniteIcon;
+    delete trayIcon;
     delete ui;
+}
+
+bool MainWindow::eventFilter(QObject* o, QEvent *e)
+{
+  if(e->type()  == QEvent::KeyPress)
+  {
+    QKeyEvent *ke = static_cast<QKeyEvent *>(e);
+    if(ke->key() == Qt::Key_Enter || ke->key() == Qt::Key_Return)
+    {
+      ui->pushButton->click();
+      return true;
+    }
+    else if(ke->key() == Qt::Key_Escape)
+    {
+        this->close();
+        return true;
+    }
+  }
+  return QObject::eventFilter(o, e);
 }
 
 void MainWindow::setExec_Follower()

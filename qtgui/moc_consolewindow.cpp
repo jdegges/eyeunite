@@ -1,7 +1,7 @@
 /****************************************************************************
 ** Meta object code from reading C++ file 'consolewindow.h'
 **
-** Created: Mon Mar 7 19:28:55 2011
+** Created: Tue Mar 8 09:45:51 2011
 **      by: The Qt Meta Object Compiler version 62 (Qt 4.7.0)
 **
 ** WARNING! All changes made in this file will be lost!
