@@ -2,7 +2,10 @@
 #define MAINWINDOW_H
 
 #include <QMainWindow>
-#include "QProcess"
+#include <QProcess>
+#include <QKeyEvent>
+#include <QEvent>
+#include <QSystemTrayIcon>
 
 namespace Ui {
     class MainWindow;
@@ -21,9 +24,14 @@ public slots:
     void setExec_Source();
     void setExec_Follower();
 
+protected:
+    bool eventFilter(QObject *o, QEvent *e);
+
 private:
     Ui::MainWindow *ui;
     QString exec_name;
+    QIcon *eyeuniteIcon;
+    QSystemTrayIcon *trayIcon;
 };
 
 #endif // MAINWINDOW_H

@@ -164,7 +164,7 @@ void* dataThread(void* arg)
       uint64_t tempseqnum = packet->seqnum;
       packet->seqnum = len - sizeof(uint64_t);
       uint64_t temp_index = tempseqnum % BUFFER_SIZE;
-      if (last_rec < BUFFER_SIZE || last_rec - BUFFER_SIZE < tempseqnum)
+      if ((last_rec < BUFFER_SIZE || last_rec - BUFFER_SIZE < tempseqnum) && receive_ar[temp_index] == NULL)
 	receive_ar[temp_index] = packet;
       else
       {
