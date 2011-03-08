@@ -11,6 +11,11 @@ MainWindow::MainWindow(QWidget *parent) :
 
     exec_name = "./eyeunitesource";
 
+    this->setTabOrder(ui->addr, ui->port);
+
+    ui->addr->setFocus();
+    ui->pushButton->setDefault(true);
+
     connect(ui->pushButton, SIGNAL(clicked()), this, SLOT(spawnProcess()));
     connect(ui->sourceButton, SIGNAL(clicked()), this, SLOT(setExec_Source()));
     connect(ui->followerButton, SIGNAL(clicked()), this, SLOT(setExec_Follower()));
@@ -36,6 +41,6 @@ void MainWindow::setExec_Source()
 void MainWindow::spawnProcess()
 {
     QStringList args;
-    ConsoleWindow* cw = new ConsoleWindow(0, exec_name, (args << ui->addr->toPlainText() << ui->port->toPlainText() << ui->bw->toPlainText() << ui->media_file->toPlainText()));
+    ConsoleWindow* cw = new ConsoleWindow(0, exec_name, ui->addr->text(), ui->port->text(), ui->bw->text(), ui->media_file->text(), ui->followerButton->isChecked());
     cw->show();
 }

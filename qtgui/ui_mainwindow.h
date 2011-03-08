@@ -1,7 +1,7 @@
 /********************************************************************************
 ** Form generated from reading UI file 'mainwindow.ui'
 **
-** Created: Sun Mar 6 00:51:55 2011
+** Created: Mon Mar 7 19:27:45 2011
 **      by: Qt User Interface Compiler version 4.7.0
 **
 ** WARNING! All changes made in this file will be lost when recompiling UI file!
@@ -18,12 +18,12 @@
 #include <QtGui/QHBoxLayout>
 #include <QtGui/QHeaderView>
 #include <QtGui/QLabel>
+#include <QtGui/QLineEdit>
 #include <QtGui/QMainWindow>
 #include <QtGui/QMenuBar>
 #include <QtGui/QPushButton>
 #include <QtGui/QRadioButton>
 #include <QtGui/QStatusBar>
-#include <QtGui/QTextEdit>
 #include <QtGui/QToolBar>
 #include <QtGui/QVBoxLayout>
 #include <QtGui/QWidget>
@@ -40,13 +40,13 @@ public:
     QRadioButton *followerButton;
     QGridLayout *gridLayout;
     QLabel *label;
-    QTextEdit *addr;
     QLabel *label_2;
-    QTextEdit *port;
     QLabel *label_3;
-    QTextEdit *bw;
     QLabel *label_4;
-    QTextEdit *media_file;
+    QLineEdit *addr;
+    QLineEdit *port;
+    QLineEdit *bw;
+    QLineEdit *media_file;
     QPushButton *pushButton;
     QMenuBar *menuBar;
     QToolBar *mainToolBar;
@@ -56,7 +56,7 @@ public:
     {
         if (MainWindow->objectName().isEmpty())
             MainWindow->setObjectName(QString::fromUtf8("MainWindow"));
-        MainWindow->resize(220, 280);
+        MainWindow->resize(227, 280);
         centralWidget = new QWidget(MainWindow);
         centralWidget->setObjectName(QString::fromUtf8("centralWidget"));
         verticalLayout = new QVBoxLayout(centralWidget);
@@ -89,50 +89,38 @@ public:
 
         gridLayout->addWidget(label, 0, 0, 1, 1);
 
-        addr = new QTextEdit(centralWidget);
-        addr->setObjectName(QString::fromUtf8("addr"));
-        addr->setMaximumSize(QSize(16777215, 25));
-        addr->setVerticalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
-        addr->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
-
-        gridLayout->addWidget(addr, 0, 1, 1, 1);
-
         label_2 = new QLabel(centralWidget);
         label_2->setObjectName(QString::fromUtf8("label_2"));
 
         gridLayout->addWidget(label_2, 1, 0, 1, 1);
-
-        port = new QTextEdit(centralWidget);
-        port->setObjectName(QString::fromUtf8("port"));
-        port->setMaximumSize(QSize(16777215, 25));
-        port->setVerticalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
-        port->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
-
-        gridLayout->addWidget(port, 1, 1, 1, 1);
 
         label_3 = new QLabel(centralWidget);
         label_3->setObjectName(QString::fromUtf8("label_3"));
 
         gridLayout->addWidget(label_3, 2, 0, 1, 1);
 
-        bw = new QTextEdit(centralWidget);
-        bw->setObjectName(QString::fromUtf8("bw"));
-        bw->setMaximumSize(QSize(16777215, 25));
-        bw->setVerticalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
-        bw->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
-
-        gridLayout->addWidget(bw, 2, 1, 1, 1);
-
         label_4 = new QLabel(centralWidget);
         label_4->setObjectName(QString::fromUtf8("label_4"));
 
         gridLayout->addWidget(label_4, 3, 0, 1, 1);
 
-        media_file = new QTextEdit(centralWidget);
+        addr = new QLineEdit(centralWidget);
+        addr->setObjectName(QString::fromUtf8("addr"));
+
+        gridLayout->addWidget(addr, 0, 1, 1, 1);
+
+        port = new QLineEdit(centralWidget);
+        port->setObjectName(QString::fromUtf8("port"));
+
+        gridLayout->addWidget(port, 1, 1, 1, 1);
+
+        bw = new QLineEdit(centralWidget);
+        bw->setObjectName(QString::fromUtf8("bw"));
+
+        gridLayout->addWidget(bw, 2, 1, 1, 1);
+
+        media_file = new QLineEdit(centralWidget);
         media_file->setObjectName(QString::fromUtf8("media_file"));
-        media_file->setMaximumSize(QSize(16777215, 25));
-        media_file->setVerticalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
-        media_file->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
 
         gridLayout->addWidget(media_file, 3, 1, 1, 1);
 
@@ -148,7 +136,7 @@ public:
         MainWindow->setCentralWidget(centralWidget);
         menuBar = new QMenuBar(MainWindow);
         menuBar->setObjectName(QString::fromUtf8("menuBar"));
-        menuBar->setGeometry(QRect(0, 0, 220, 27));
+        menuBar->setGeometry(QRect(0, 0, 227, 25));
         MainWindow->setMenuBar(menuBar);
         mainToolBar = new QToolBar(MainWindow);
         mainToolBar->setObjectName(QString::fromUtf8("mainToolBar"));

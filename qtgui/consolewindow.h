@@ -14,7 +14,7 @@ class ConsoleWindow : public QMainWindow
 
 public:
     explicit ConsoleWindow(QWidget *parent = 0);
-    explicit ConsoleWindow(QWidget *parent = 0, const QString &exec_name = "", const QStringList &args = QStringList(""));
+    explicit ConsoleWindow(QWidget *parent = 0, const QString &exec_name = "", const QString &addr = "", const QString &port = "", const QString &bw = "", const QString &media_file = "", bool follower = false);
     ~ConsoleWindow();
 
 public slots:
@@ -26,6 +26,8 @@ public slots:
 private:
     Ui::ConsoleWindow *ui;
     QProcess* process;
+    QProcess* vlc_proc;
+    bool m_follower;
 };
 
 #endif // CONSOLEWINDOW_H

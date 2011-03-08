@@ -9,11 +9,12 @@ ConsoleWindow::ConsoleWindow(QWidget *parent) :
     ui->setupUi(this);
 }
 
-ConsoleWindow::ConsoleWindow(QWidget *parent, const QString &exec_name, const QStringList &args) :
+ConsoleWindow::ConsoleWindow(QWidget *parent, const QString &exec_name, const QString &addr, const QString &port, const QString &bw, const QString &media_file, bool follower) :
     QMainWindow(parent),
     ui(new Ui::ConsoleWindow)
 {
     ui->setupUi(this);
+    m_follower = follower;
     this->setAttribute(Qt::WA_DeleteOnClose, true);
     setWindowTitle("Console: " + exec_name);
 
@@ -24,11 +25,22 @@ ConsoleWindow::ConsoleWindow(QWidget *parent, const QString &exec_name, const QS
     process = new QProcess();
     connect(process, SIGNAL(readyReadStandardOutput()), this, SLOT(readOutput()));
     connect(process, SIGNAL(readyReadStandardError()), this, SLOT(readError()));
-    process->start(exec_name, args);
+    process->start(exec_name, QStringList() << addr << port << bw << media_file);
+
+    process->waitForStarted();
+
+    if(m_follower)
+    {
+      vlc_proc = new QProcess();
+      vlc_proc->start("vlc", QStringList() << media_file);
+      vlc_proc->waitForStarted();
+    }
 }
 
 ConsoleWindow::~ConsoleWindow()
 {
+    if(m_follower)
+      delete vlc_proc;
     delete process;
     delete ui;
 }
