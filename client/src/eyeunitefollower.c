@@ -32,12 +32,10 @@ bool timestamps = false;
 struct data_pack** packet_table = NULL;
 
 
-uint64_t last_rec = 0;
-uint64_t trail = 0;
+volatile uint64_t last_rec = 0;
+volatile uint64_t trail = 0;
 int loopnum = 0;
 struct data_pack* receive_ar[BUFFER_SIZE];
-
-void displayThread();
 
 // Internal node to store peer_info, related eu_sock, and use in linked lists
 struct peer_node
@@ -157,15 +155,24 @@ void* dataThread(void* arg)
     if(upstream_eu_sock && (len = eu_recv(upstream_eu_sock, buf, EU_PACKETLEN,
                                           0, from_addr, from_port)) > 0)
     {
-      
       // Converts char string buffer to packet struct
       struct data_pack* packet = (struct data_pack*)malloc(sizeof(struct data_pack));
       memcpy(packet, buf, len);
+      push_data_to_peers((char*)(packet), len);
       uint64_t tempseqnum = packet->seqnum;
+      //print_error("SEQNUM %lu", tempseqnum);
       packet->seqnum = len - sizeof(uint64_t);
       uint64_t temp_index = tempseqnum % BUFFER_SIZE;
       if (last_rec < BUFFER_SIZE || last_rec - BUFFER_SIZE < tempseqnum)
+      {
+	while (trail + BUFFER_SIZE < tempseqnum)
+	{
+	  print_error("YIELDING");
+	  assert(sched_yield()==0);
+	  print_error("OUT");
+	}
 	receive_ar[temp_index] = packet;
+      }
       else
       {
 	char temp[EU_ADDRSTRLEN*4];
@@ -174,7 +181,6 @@ void* dataThread(void* arg)
       }
       if (tempseqnum > last_rec)
 	last_rec = tempseqnum;
-      displayThread();
     }
     else
     {
@@ -231,13 +237,13 @@ void* statusThread(void* arg)
   }
 }
 
-//void* displayThread(void* arg)
-void displayThread()
+void* displayThread(void* arg)
 {
-  //while(1)
-  //{
+  while(1)
+  {
     if(last_rec > (BUFFER_SIZE >> 1))
     {
+      
       struct data_pack* packet;
       while (trail + (BUFFER_SIZE >> 1) < last_rec)
       {
@@ -252,14 +258,15 @@ void displayThread()
 	else
 	{
 	  char temp[EU_ADDRSTRLEN*4];
-	  int len = snprintf(temp, EU_ADDRSTRLEN*4, "DROPPED SEQUENCE %lu CURRENT LAST %lu\n", trail, last_rec);
+	  int len = snprintf(temp, EU_ADDRSTRLEN*4, "DROPPED SEQUENCE: %lu. LAST RECEIVED: %lu\n", trail, last_rec);
 	  fwrite(temp ,1,len, logger);
 	  fflush(logger);
 	}
 	trail++;
       }
+      sched_yield();
     }
-  //}
+  }
 }
 
 int main(int argc, char* argv[])
@@ -345,18 +352,18 @@ int main(int argc, char* argv[])
 
   pthread_t status_thread;
   pthread_t data_thread;
-  //pthread_t display_thread;
+  pthread_t display_thread;
 
   // Start status thread
   pthread_create(&status_thread, NULL, statusThread, NULL);
   pthread_create(&data_thread, NULL, dataThread, NULL);
-  //pthread_create(&display_thread, NULL, displayThread, NULL);
+  pthread_create(&display_thread, NULL, displayThread, NULL);
 
 
   // Clean up at termination
   pthread_join(status_thread, NULL);
   pthread_join(data_thread, NULL);
-  //pthread_join(display_thread, NULL);
+  pthread_join(display_thread, NULL);
 
   // Close sockets and free memory
   bootstrap_cleanup(b);
