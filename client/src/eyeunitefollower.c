@@ -160,17 +160,12 @@ void* dataThread(void* arg)
       memcpy(packet, buf, len);
       push_data_to_peers((char*)(packet), len);
       uint64_t tempseqnum = packet->seqnum;
-      //print_error("SEQNUM %lu", tempseqnum);
       packet->seqnum = len - sizeof(uint64_t);
       uint64_t temp_index = tempseqnum % BUFFER_SIZE;
       if (last_rec < BUFFER_SIZE || last_rec - BUFFER_SIZE < tempseqnum)
       {
 	while (trail + BUFFER_SIZE < tempseqnum)
-	{
-	  print_error("YIELDING");
 	  assert(sched_yield()==0);
-	  print_error("OUT");
-	}
 	receive_ar[temp_index] = packet;
       }
       else
