@@ -7,7 +7,6 @@ MainWindow::MainWindow(QWidget *parent) :
     ui(new Ui::MainWindow)
 {
     ui->setupUi(this);
-    setAttribute(Qt::WA_DeleteOnClose, true);
 
     exec_name = "./eyeunitesource";
 
@@ -29,9 +28,12 @@ MainWindow::MainWindow(QWidget *parent) :
 
 MainWindow::~MainWindow()
 {
-    delete eyeuniteIcon;
-    delete trayIcon;
-    delete ui;
+    if(eyeuniteIcon)
+      delete eyeuniteIcon;
+    if(trayIcon)
+      delete trayIcon;
+    if(ui)
+      delete ui;
 }
 
 bool MainWindow::eventFilter(QObject* o, QEvent *e)

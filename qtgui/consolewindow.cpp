@@ -23,6 +23,7 @@ ConsoleWindow::ConsoleWindow(QWidget *parent, const QString &exec_name, const QS
     connect(ui->clearButton, SIGNAL(clicked()), this, SLOT(clearLog()));
     connect(ui->killButton, SIGNAL(clicked()), this, SLOT(killProcess()));
 
+
     process = new QProcess();
     connect(process, SIGNAL(readyReadStandardOutput()), this, SLOT(readOutput()));
     connect(process, SIGNAL(readyReadStandardError()), this, SLOT(readError()));
@@ -32,8 +33,9 @@ ConsoleWindow::ConsoleWindow(QWidget *parent, const QString &exec_name, const QS
 
     if(m_follower)
     {
+      ui->textBrowser->append("Starting video...");
       vlc_proc = new QProcess();
-      vlc_proc->start("vlc", QStringList() << media_file);
+      vlc_proc->start("vlc", QStringList() << "-I qt" << media_file);
       vlc_proc->waitForStarted();
     }
 }
