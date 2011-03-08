@@ -98,7 +98,7 @@ static void* data_thread(void *vptr) {
     }
 
     while (0 == countRootChildren(tree)) {
-      sleep(10);		// Temporary to allow setup for tests
+      sleep(1);		// Temporary to allow setup for tests
       // do nothing.
     }
 
@@ -126,12 +126,10 @@ static void* data_thread(void *vptr) {
         print_error ("couldn't send full packet :/");
         return NULL;
       }
-
-      print_error ("sent packet (to %s:%s) with (seqnum, len) = (%lu, %lu)", pi->addr, pi->port, dpack.seqnum, amount + sizeof (uint64_t));
-
+      
       alpha_queue_push (socks, sock);
       
-      usleep(50);
+      usleep(200);
     }
 
     dpack.seqnum++;
