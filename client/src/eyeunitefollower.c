@@ -200,7 +200,7 @@ void* recvThread(void* arg)
         return NULL;
       }
       // alert follower thread that we've pushed something
-      pthread_cond_signal(&follower_queue_nonempty);
+      pthread_cond_broadcast(&follower_queue_nonempty);
 
       if(!alpha_queue_push(display_buffer_queue, rpack_copy))
       {
@@ -208,7 +208,7 @@ void* recvThread(void* arg)
         return NULL;
       }
       // alert display buffer thread that we've pushed something.
-      pthread_cond_signal(&display_buffer_queue_nonempty);
+      pthread_cond_broadcast(&display_buffer_queue_nonempty);
     }
     else
     {
@@ -292,7 +292,7 @@ void* displayBufferThread(void* arg)
         last_rec = current_seqnum;
 
         // alert display thread that the window is no longer empty
-        pthread_cond_signal(&window_nonempty);
+        pthread_cond_broadcast(&window_nonempty);
       }
       else
       {
@@ -343,7 +343,7 @@ void* displayThread(void* arg)
     trail++;
 
     // alert display buffer thread that the window is no longer full
-    pthread_cond_signal(&window_nonfull);
+    pthread_cond_broadcast(&window_nonfull);
   }
 }
 
