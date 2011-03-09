@@ -29,14 +29,14 @@
 
 struct node
 {
-	void *item;
-  struct node *next;
+	volatile void *item;
+  volatile struct node *next;
 };
 
 struct alpha_queue
 {
-  struct node *head;
-  struct node *tail;
+  volatile struct node *head;
+  volatile struct node *tail;
 };
 
 
@@ -44,7 +44,7 @@ struct alpha_queue *
 alpha_queue_new (void)
 {
   struct alpha_queue *queue = calloc (1, sizeof *queue);
-  struct node *node = calloc (1, sizeof *node);
+  volatile struct node *node = calloc (1, sizeof *node);
 
   if (NULL == queue || NULL == node)
     return NULL;
@@ -62,8 +62,8 @@ alpha_queue_free (struct alpha_queue *queue)
     {
       while (queue->head)
         {
-          struct node *next = queue->head->next;
-          free (queue->head);
+          volatile struct node *next = queue->head->next;
+          free ((void *) queue->head);
           queue->head = next;
         }
     }
@@ -74,7 +74,7 @@ alpha_queue_free (struct alpha_queue *queue)
 bool
 alpha_queue_push (struct alpha_queue *queue, void *item)
 {
-  struct node *new;
+  volatile struct node *new;
 
   if (NULL == queue)
     return false;
@@ -93,8 +93,8 @@ alpha_queue_push (struct alpha_queue *queue, void *item)
 void *
 alpha_queue_pop (struct alpha_queue *queue)
 {
-  struct node *temp;
-  void *item;
+  volatile struct node *temp;
+  volatile void *item;
 
   if (NULL == queue)
     return NULL;
@@ -106,7 +106,7 @@ alpha_queue_pop (struct alpha_queue *queue)
   temp = queue->head;
   queue->head = queue->head->next;
 
-  free (temp);
+  free ((void *) temp);
 
-  return item;
+  return (void *) item;
 }
