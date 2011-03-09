@@ -55,12 +55,12 @@ struct peer_node* peer_node(struct peer_info node_params)
   if(eu_connect(pn->eu_sock, node_params.addr, node_params.port))
   {
     print_error("Failed to conncet to peer %s", node_params.pid);
-	  eu_close(pn->eu_sock);
-	  return NULL;
+    eu_close(pn->eu_sock);
+    return NULL;
   }
   pn->next = NULL;
   return pn;
-};
+}
 
 // Traverses peer_node linked list and closes sockets/frees memory
 void close_all_peer_sockets()
@@ -164,18 +164,18 @@ void* dataThread(void* arg)
       uint64_t temp_index = tempseqnum % BUFFER_SIZE;
       if (last_rec < BUFFER_SIZE || last_rec - BUFFER_SIZE < tempseqnum)
       {
-	while (trail + BUFFER_SIZE < tempseqnum)
-	  assert(sched_yield()==0);
-	receive_ar[temp_index] = packet;
+        while (trail + BUFFER_SIZE < tempseqnum)
+          assert(sched_yield()==0);
+          receive_ar[temp_index] = packet;
       }
       else
       {
-	char temp[EU_ADDRSTRLEN*4];
-	int len = snprintf(temp, EU_ADDRSTRLEN*4, "Didn't put %lu in array\n", temp_index);
-	fwrite(temp, 1, len, logger);
+        char temp[EU_ADDRSTRLEN*4];
+        int len = snprintf(temp, EU_ADDRSTRLEN*4, "Didn't put %lu in array\n", temp_index);
+        fwrite(temp, 1, len, logger);
       }
       if (tempseqnum > last_rec)
-	last_rec = tempseqnum;
+        last_rec = tempseqnum;
     }
     else
     {
@@ -238,26 +238,25 @@ void* displayThread(void* arg)
   {
     if(last_rec > (BUFFER_SIZE >> 1))
     {
-      
       struct data_pack* packet;
       while (trail + (BUFFER_SIZE >> 1) < last_rec)
       {
-	packet = receive_ar[trail % BUFFER_SIZE];
-	if (packet != NULL)
-	{
-	  fwrite(packet->data, 1, packet->seqnum, output_file);
-	  fflush(output_file);
-	  receive_ar[trail % BUFFER_SIZE] = NULL;
-	  free(packet);
-	}
-	else
-	{
-	  char temp[EU_ADDRSTRLEN*4];
-	  int len = snprintf(temp, EU_ADDRSTRLEN*4, "DROPPED SEQUENCE: %lu. LAST RECEIVED: %lu\n", trail, last_rec);
-	  fwrite(temp ,1,len, logger);
-	  fflush(logger);
-	}
-	trail++;
+        packet = receive_ar[trail % BUFFER_SIZE];
+        if (packet != NULL)
+        {
+          fwrite(packet->data, 1, packet->seqnum, output_file);
+          fflush(output_file);
+          receive_ar[trail % BUFFER_SIZE] = NULL;
+          free(packet);
+        }
+        else
+        {
+          char temp[EU_ADDRSTRLEN*4];
+          int len = snprintf(temp, EU_ADDRSTRLEN*4, "DROPPED SEQUENCE: %lu. LAST RECEIVED: %lu\n", trail, last_rec);
+          fwrite(temp ,1,len, logger);
+          fflush(logger);
+        }
+        trail++;
       }
       sched_yield();
     }
