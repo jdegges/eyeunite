@@ -312,7 +312,7 @@ int addPeer(struct tree_t *tree, int peerbw, char pid[], char addr[], char port[
     sn_sendmsg ( tree->socket, new->p_info.pid, FOLLOW_NODE, &(new->parent->p_info));
     sn_sendmsg ( tree->socket, new->parent->p_info.pid, FEED_NODE, &(new->p_info));
 
-    if ( replace != NULL && replace != new)
+    if ( replace != new)
       sn_sendmsg ( tree->socket, new->parent->p_info.pid, DROP_NODE, &(replace->p_info));
     
     int i;
@@ -437,7 +437,7 @@ int movePeer(struct tree_t *tree, char pid[])
     sn_sendmsg ( tree->socket, move->p_info.pid, FOLLOW_NODE, &(move->parent->p_info));
     sn_sendmsg ( tree->socket, oldparent->p_info.pid, DROP_NODE, &(move->p_info));
 
-    if ( replace != NULL)
+    if ( replace != move)
       sn_sendmsg ( tree->socket, move->parent->p_info.pid, DROP_NODE, &(replace->p_info));
     
     int i;
