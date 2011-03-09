@@ -213,6 +213,7 @@ void* recvThread(void* arg)
     else
     {
       free_rpack(rpack);
+      print_error ("End of stream?");
       return NULL;
     }
   }
@@ -273,6 +274,13 @@ void* displayBufferThread(void* arg)
 
     current_seqnum = rpack->dpack.seqnum;
     window_index = current_seqnum % BUFFER_SIZE;
+
+    if(0 == trail || 0 == last_rec)
+    {
+      assert(trail == last_rec);
+      trail = last_rec = current_seqnum;
+      print_error ("first packet has seqnum: %lu", current_seqnum);
+    }
 
     if(last_rec < BUFFER_SIZE || last_rec - BUFFER_SIZE < current_seqnum)
     {
