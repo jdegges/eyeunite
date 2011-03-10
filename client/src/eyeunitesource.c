@@ -82,6 +82,10 @@ static void* control_thread(void *vptr) {
             print_error ("Memory Error in remove peer\n");
           }
           printTree (tree);
+          
+        case DROP_NODE:
+          print_error ("Dropping node %s\n", msg->node_params.pid)
+          printTree (tree);
       }
     }
   }
@@ -136,12 +140,25 @@ static void* data_thread(void *vptr) {
         return NULL;
       }
       
-      //if(dpack.seqnum < 500 || dpack.seqnum > 700){
-      if ((amount + sizeof (uint64_t)) != eu_send (sock, &dpack, amount + sizeof (uint64_t), 0)) {
+      int rc = eu_send (sock, &dpack, amount + sizeof (uint64_t), 0)
+      if (rc != (amount + sizeof (uint64_t))) {
+        if (rc == -2)
+        {
+          int prremove = removePeer (tree, pi->pid);
+          
+          if (pradd != 0) {
+              switch (pradd) {
+                case -1:
+                  print_error ("Memory Error in adding peer\n");
+                  break;
+              }
+          }
+          printTree (tree);
+        }
+        
         print_error ("couldn't send full packet :/");
         return NULL;
       }
-      //}
       
       alpha_queue_push (socks, sock);
       
