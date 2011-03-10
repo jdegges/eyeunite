@@ -164,10 +164,8 @@ eu_send (struct eu_socket *sock, const void *buf, size_t len, int flags)
   }
 
   numbytes = send (sock->fd, buf, len, flags);
-  if (-1 == numbytes) {
-    print_error ("error %s", strerror(errno));
+  if (-1 == numbytes)
     return -2;
-  }
 
   return numbytes;
 }
