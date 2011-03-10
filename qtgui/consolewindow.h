@@ -33,6 +33,7 @@ private:
     QProcess* process;
     QProcess* vlc_proc;
     bool m_follower;
+    QString m_media_file;
 };
 
 #endif // CONSOLEWINDOW_H
