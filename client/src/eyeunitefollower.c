@@ -273,7 +273,7 @@ void* followerThread(void* arg)
       return NULL;
     }
 
-    push_data_to_peers((char*) &(forward_packet->data), forward_packet->len);
+    push_data_to_peers((char*) &(forward_packet->data), forward_packet->len + sizeof(uint64_t));
 
     free(forward_packet); // TODO: Joey you can fix
   }
