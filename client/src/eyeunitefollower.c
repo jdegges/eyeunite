@@ -19,10 +19,7 @@ struct eu_socket* upstream_eu_sock = NULL;
 struct peer_node* downstream_peers = NULL;
 size_t num_downstream_peers = 0;
 pthread_mutex_t downstream_peers_mutex = PTHREAD_MUTEX_INITIALIZER;
-pthread_mutex_t source_peer_mutex = PTHREAD_MUTEX_INITIALIZER;
-pthread_mutex_t packet_buffer_mutex = PTHREAD_MUTEX_INITIALIZER;
 struct peer_info my_peer_info;
-int my_bw = 1;
 uint64_t seqnum = 0;
 uint64_t lastrec = 0;
 FILE* output_file = NULL;
@@ -30,6 +27,8 @@ FILE* logger = NULL;
 bool timestamps = false;
 struct data_pack** packet_table = NULL;
 struct alpha_queue* fifo_queue;
+struct alpha_queue* follower_queue;
+pthread_cond_t follower_queue_nonempty = PTHREAD_COND_INITIALIZER;
 
 
 volatile uint64_t last_rec = 0;
@@ -162,11 +161,21 @@ void* dataThread(void* arg)
                                           0, from_addr, from_port)) > 0)
     {
       // Converts char string buffer to packet struct
-      struct data_pack* packet = (struct data_pack*)malloc(sizeof(struct data_pack));
       struct media_pack* media = (struct media_pack*)malloc(sizeof(struct media_pack));
       memcpy(&(media->data), buf, length);
-      media->len = length;
-      push_data_to_peers((char*)(&(media->data)), media->len);
+      media->len = length - sizeof(uint64_t);
+      
+      // copy data to send to follower thread
+      struct media_pack* forward_packet = (struct media_pack*)malloc(sizeof(struct media_pack));
+      memcpy(forward_packet, media, sizeof(struct media_pack));
+      if(!alpha_queue_push(follower_queue, forward_packet))
+      {
+        print_error("out of memory");
+        return NULL;
+      }
+      // alert follower thread that we've pushed something
+      pthread_cond_broadcast(&follower_queue_nonempty);
+      
       uint64_t tempseqnum = media->data.seqnum;
       uint64_t temp_index = tempseqnum % BUFFER_SIZE;
       if (last_rec < BUFFER_SIZE || last_rec - BUFFER_SIZE < tempseqnum)
@@ -205,11 +214,8 @@ void* bufferThread(void* arg)
         media = receive_ar[trail % BUFFER_SIZE];
         if (media != NULL)
         {
-          //fwrite(packet->data, 1, packet->seqnum, output_file);
-          //fflush(output_file);
           alpha_queue_push(fifo_queue, media);
           receive_ar[trail % BUFFER_SIZE] = NULL;
-          //free(packet);
         }
         else
         {
@@ -242,6 +248,34 @@ void* outputThread(void* arg)
       }
       free(media);
     }
+  }
+}
+
+void* followerThread(void* arg)
+{
+  pthread_mutex_t fastmutex = PTHREAD_MUTEX_INITIALIZER;
+
+  for(;;)
+  {
+    struct media_pack* forward_packet = alpha_queue_pop(follower_queue);
+    if(NULL == forward_packet)
+    {
+      // wait for the recv thread to push this queue
+      pthread_mutex_lock(&fastmutex);
+      while(NULL == (forward_packet = alpha_queue_pop(follower_queue)))
+        pthread_cond_wait(&follower_queue_nonempty, &fastmutex);
+      pthread_mutex_unlock(&fastmutex);
+    }
+
+    if(NULL == forward_packet)
+    {
+      print_error("pthreads failed me");
+      return NULL;
+    }
+
+    push_data_to_peers((char*) &(forward_packet->data), forward_packet->len);
+
+    free(forward_packet); // TODO: Joey you can fix
   }
 }
 
@@ -344,6 +378,9 @@ int main(int argc, char* argv[])
   num_downstream_peers = 0;
   logger = fopen("log.txt", "ab");
   fifo_queue = alpha_queue_new();
+  assert (fifo_queue);
+  follower_queue = alpha_queue_new ();
+  assert (follower_queue);
   
   // Initialize to NULL
   for (last_rec = 0; last_rec < BUFFER_SIZE; last_rec++)
@@ -377,12 +414,14 @@ int main(int argc, char* argv[])
   pthread_t status_thread;
   pthread_t data_thread;
   pthread_t buffer_thread;
+  pthread_t follower_thread;
   pthread_t output_thread;
 
   // Start status thread
   pthread_create(&status_thread, NULL, statusThread, NULL);
   pthread_create(&data_thread, NULL, dataThread, NULL);
   pthread_create(&buffer_thread, NULL, bufferThread, NULL);
+  pthread_create(&follower_thread, NULL, followerThread, NULL);
   pthread_create(&output_thread, NULL, outputThread, NULL);
 
 
@@ -390,6 +429,7 @@ int main(int argc, char* argv[])
   pthread_join(status_thread, NULL);
   pthread_join(data_thread, NULL);
   pthread_join(buffer_thread, NULL);
+  pthread_join(follower_thread, NULL);
   pthread_join(output_thread, NULL);
 
   // Close sockets and free memory
