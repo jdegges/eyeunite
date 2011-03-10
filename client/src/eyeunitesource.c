@@ -82,10 +82,6 @@ static void* control_thread(void *vptr) {
             print_error ("Memory Error in remove peer\n");
           }
           printTree (tree);
-          
-        case DROP_NODE:
-          print_error ("Dropping node %s\n", msg->node_params.pid);
-          printTree (tree);
       }
     }
   }
