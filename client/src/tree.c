@@ -624,7 +624,6 @@ void printTree(struct tree_t *tree)
 			alpha_queue_push ( queue, (void*) child);
 		}
 		fprintf(stdout, "\n\n");
-
 	}
 }
 
