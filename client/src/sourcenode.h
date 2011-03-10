@@ -10,7 +10,8 @@ typedef enum {
   DROP_NODE = 3,
   REQ_MOVE = 4,
   REQ_JOIN = 5,
-  REQ_EXIT = 6
+  REQ_EXIT = 6,
+  REM_NODE = 7
 } message_type;
 
 typedef struct {

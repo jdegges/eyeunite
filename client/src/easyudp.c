@@ -10,6 +10,7 @@
 #include <string.h>
 #include <sys/types.h>
 #include <sys/socket.h>
+#include <errno.h>
 #include <unistd.h>
 
 struct eu_socket
@@ -164,8 +165,8 @@ eu_send (struct eu_socket *sock, const void *buf, size_t len, int flags)
 
   numbytes = send (sock->fd, buf, len, flags);
   if (-1 == numbytes) {
-    print_error ("send");
-    return -1;
+    print_error ("error %s", strerror(errno));
+    return -2;
   }
 
   return numbytes;

@@ -60,6 +60,20 @@ static void* control_thread(void *vptr) {
           }
           printTree (tree);
           break;
+        
+        case REM_NODE:
+          print_error ("Request drop node %s\n", msg->node_params.pid);
+          ;int prremove = removePeer (tree, msg->node_params.pid);
+          
+          if (pradd != 0) {
+              switch (pradd) {
+                case -1:
+                  print_error ("Memory Error in adding peer\n");
+                  break;
+              }
+          }
+          printTree (tree);
+          break;
 
         case REQ_EXIT:
           print_error ("Request exit from %s\n", msg->node_params.pid);
@@ -121,11 +135,13 @@ static void* data_thread(void *vptr) {
         print_error ("couldn't connect??");
         return NULL;
       }
-
+      
+      //if(dpack.seqnum < 500 || dpack.seqnum > 700){
       if ((amount + sizeof (uint64_t)) != eu_send (sock, &dpack, amount + sizeof (uint64_t), 0)) {
         print_error ("couldn't send full packet :/");
         return NULL;
       }
+      //}
       
       alpha_queue_push (socks, sock);
       

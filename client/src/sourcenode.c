@@ -104,6 +104,24 @@ sn_rcvmsg (void* socket) {
     memcpy (&(req_msg->node_params), join_data, join_size);
     zmq_msg_close (&join);
   }
+  else if ( req_msg->type == REM_NODE ) {
+    
+    // MAKE SURE THERE'S MORE
+    rc = zmq_getsockopt (socket, ZMQ_RCVMORE, &more, &more_size);
+    assert (rc == 0 && more);
+    
+    zmq_msg_t remove;
+    rc = zmq_msg_init (&remove);
+    assert (rc == 0);
+    rc = zmq_recv (socket, &remove, ZMQ_NOBLOCK);
+    assert (rc == 0);
+    
+    void* drop_data = zmq_msg_data (&remove);
+    size_t rem_size = zmq_msg_size (&remove);
+    assert(rem_size == sizeof(struct peer_info));
+    memcpy (&(req_msg->node_params), drop_data, rem_size);
+    zmq_msg_close (&remove);
+  }
 
   // MAKE SURE THERE'S NO MORE XXX TODO FIXME: when the above if statement is fixed this should be re-enabled
 //  rc = zmq_getsockopt( socket, ZMQ_RCVMORE, &more, &more_size);
@@ -169,6 +187,8 @@ sn_mtype_to_string (message_type type) {
       return "REQ_JOIN";
     case REQ_EXIT:
       return "REQ_EXIT";
+    case REM_NODE:
+      return "REM_NODE";
     default:
       return "NO_ENUM_MATCH";
     }

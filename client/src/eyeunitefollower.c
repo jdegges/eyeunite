@@ -88,15 +88,19 @@ void push_data_to_peers(char* buf, size_t len)
 {
   struct peer_node* node = downstream_peers;
   int rc;
+  assert(len > 0);
   while(node != NULL)
   {
     // Blocking send
     rc = eu_send(node->eu_sock, buf, len, 0);
-    if(rc < len)
+    if(rc < (int)len)
     {
       print_error("Failed to send data to peer %s", node->peer_info.pid);
       // If data push fails, don't return.
       // but continue to try to push data to other peers
+      
+      // Send request to drop node
+      fn_sendmsg(source_zmq_sock, REM_NODE, &(node->peer_info));
     }
     node = node->next;
   }
