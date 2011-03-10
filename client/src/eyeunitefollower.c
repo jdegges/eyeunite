@@ -29,6 +29,7 @@ struct data_pack** packet_table = NULL;
 struct alpha_queue* fifo_queue;
 struct alpha_queue* follower_queue;
 pthread_cond_t follower_queue_nonempty = PTHREAD_COND_INITIALIZER;
+struct alpha_queue* mpack_garbage;
 
 
 volatile uint64_t last_rec = 0;
@@ -155,6 +156,24 @@ void drop_downstream_peer(struct peer_node* new_peer)
   return;
 }
 
+struct media_pack* alloc_mpack(void)
+{
+  struct media_pack* mpack = alpha_queue_pop(mpack_garbage);
+  if (NULL == mpack)
+  {
+    mpack = malloc(sizeof *mpack);
+    if (NULL == mpack)
+      print_error ("out of memory");
+  }
+
+  return mpack;
+}
+
+void free_mpack(struct media_pack* mpack)
+{
+  if (!alpha_queue_push(mpack_garbage, mpack))
+    print_error ("absurd failure");
+}
 
 // Listens on upstream eu_socket for incoming UDP data to push to peers
 // Delays playback by a short amount, and has a timeout period for missing packets
@@ -166,19 +185,30 @@ void* dataThread(void* arg)
   {
     char from_addr[EU_ADDRSTRLEN];
     char from_port[EU_PORTSTRLEN];
+    struct media_pack* media = alloc_mpack();
+
+    if(NULL == media)
+    {
+      print_error ("out of memory?");
+      return NULL;
+    }
 
     // Blocking recv
-    if(upstream_eu_sock && (length = eu_recv(upstream_eu_sock, buf, EU_PACKETLEN,
-                                          0, from_addr, from_port)) > 0)
+    if(0 < (media->len = eu_recv(upstream_eu_sock,&media->data, EU_PACKETLEN,
+                                 0, from_addr, from_port)))
     {
       // Converts char string buffer to packet struct
-      struct media_pack* media = (struct media_pack*)malloc(sizeof(struct media_pack));
-      memcpy(&(media->data), buf, length);
-      media->len = length - sizeof(uint64_t);
+      media->len -= sizeof(uint64_t);
       
       // copy data to send to follower thread
-      struct media_pack* forward_packet = (struct media_pack*)malloc(sizeof(struct media_pack));
-      memcpy(forward_packet, media, sizeof(struct media_pack));
+      struct media_pack* forward_packet = alloc_mpack();
+      if(NULL == forward_packet)
+      {
+        print_error("out of memory");
+        return NULL;
+      }
+
+      memcpy(forward_packet, media, sizeof *media);
       if(!alpha_queue_push(follower_queue, forward_packet))
       {
         print_error("out of memory");
@@ -195,14 +225,14 @@ void* dataThread(void* arg)
           last_rec = tempseqnum;
         while (trail + BUFFER_SIZE < tempseqnum)
           assert(sched_yield()==0);
-          receive_ar[temp_index] = media;
+        receive_ar[temp_index] = media;
       }
       else
       {
         char temp[EU_ADDRSTRLEN*4];
         int len = snprintf(temp, EU_ADDRSTRLEN*4, "Didn't put %lu in array\n", temp_index);
         fwrite(temp, 1, len, logger);
-        free(media);
+        free_mpack(media);
       }
     }
     else
@@ -257,7 +287,7 @@ void* outputThread(void* arg)
         fflush(output_file);
         last_pushed = media->data.seqnum;
       }
-      free(media);
+      free_mpack(media);
     }
   }
 }
@@ -286,7 +316,7 @@ void* followerThread(void* arg)
 
     push_data_to_peers((char*) &(forward_packet->data), forward_packet->len + sizeof(uint64_t));
 
-    free(forward_packet); // TODO: Joey you can fix
+    free_mpack(forward_packet);
   }
 }
 
@@ -392,6 +422,8 @@ int main(int argc, char* argv[])
   assert (fifo_queue);
   follower_queue = alpha_queue_new ();
   assert (follower_queue);
+  mpack_garbage = alpha_queue_new();
+  assert (mpack_garbage);
   
   // Initialize to NULL
   for (last_rec = 0; last_rec < BUFFER_SIZE; last_rec++)
