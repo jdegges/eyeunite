@@ -6,6 +6,8 @@
 #include <QKeyEvent>
 #include <QEvent>
 #include <QSystemTrayIcon>
+#include <QFile>
+#include <QTextStream>
 
 namespace Ui {
     class MainWindow;
@@ -32,6 +34,7 @@ private:
     QString exec_name;
     QIcon *eyeuniteIcon;
     QSystemTrayIcon *trayIcon;
+    QFile *config_file;
 };
 
 #endif // MAINWINDOW_H

@@ -24,10 +24,30 @@ MainWindow::MainWindow(QWidget *parent) :
     trayIcon = new QSystemTrayIcon(*eyeuniteIcon);
     trayIcon->show();
     trayIcon->setIcon(*eyeuniteIcon);
+
+    QString addr, port, bw, media_file;
+
+    config_file = new QFile(".config");
+    config_file->open(QIODevice::ReadWrite | QIODevice::Text);
+    QTextStream in(config_file);
+    in >> addr >> port >> bw >> media_file;
+    ui->addr->setText(addr);
+    ui->port->setText(port);
+    ui->bw->setText(bw);
+    ui->media_file->setText(media_file);
 }
 
 MainWindow::~MainWindow()
 {
+    if(config_file)
+    {
+      config_file->remove();
+      config_file->open(QIODevice::ReadWrite | QIODevice::Text);
+      QTextStream out(config_file);
+      out << ui->addr->text() << "\n" << ui->port->text() << "\n" << ui->bw->text() << "\n" << ui->media_file->text() << "\n";
+      config_file->close();
+      delete config_file;
+    }
     if(eyeuniteIcon)
       delete eyeuniteIcon;
     if(trayIcon)
