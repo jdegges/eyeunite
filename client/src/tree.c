@@ -460,11 +460,12 @@ int removePeer(struct tree_t *tree, char pid[])
   // if enough open spots, give all children to subtree find
   // if not, move enough children to fit the rest in subtree find
   
-  nodefree(remove);
-
   if (tree->debug == 0) {
     sn_sendmsg( tree->socket, remove->parent->p_info.pid, DROP_NODE, &(remove->p_info));
   }
+
+  nodefree(remove);
+
   // todo: maybe tell remove to stop listening for parent
   return 0;
 }

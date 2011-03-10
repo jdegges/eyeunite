@@ -133,7 +133,8 @@ void drop_downstream_peer(struct peer_node* new_peer)
   else
   {
     struct peer_node* currNode = downstream_peers;
-    if(currNode->peer_info.pid == new_peer->peer_info.pid)
+    if(!strncmp(currNode->peer_info.pid, new_peer->peer_info.pid,
+                EU_TOKENSTRLEN))
     {
       downstream_peers = currNode->next;
       eu_close(currNode->eu_sock);
@@ -142,7 +143,8 @@ void drop_downstream_peer(struct peer_node* new_peer)
     }
     while(currNode->next != NULL)
     {
-      if(currNode->next->peer_info.pid == new_peer->peer_info.pid)
+      if(!strncmp(currNode->next->peer_info.pid, new_peer->peer_info.pid,
+                  EU_TOKENSTRLEN))
       {
         struct peer_node* targetNode = currNode->next;
         currNode->next = currNode->next->next;
