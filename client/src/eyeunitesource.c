@@ -84,7 +84,7 @@ static void* control_thread(void *vptr) {
           printTree (tree);
           
         case DROP_NODE:
-          print_error ("Dropping node %s\n", msg->node_params.pid)
+          print_error ("Dropping node %s\n", msg->node_params.pid);
           printTree (tree);
       }
     }
@@ -140,16 +140,16 @@ static void* data_thread(void *vptr) {
         return NULL;
       }
       
-      int rc = eu_send (sock, &dpack, amount + sizeof (uint64_t), 0)
+      int rc = eu_send (sock, &dpack, amount + sizeof (uint64_t), 0);
       if (rc != (amount + sizeof (uint64_t))) {
         if (rc == -2)
         {
           int prremove = removePeer (tree, pi->pid);
           
-          if (pradd != 0) {
-              switch (pradd) {
+          if (prremove != 0) {
+              switch (prremove) {
                 case -1:
-                  print_error ("Memory Error in adding peer\n");
+                  print_error ("Memory Error in removing peer\n");
                   break;
               }
           }
