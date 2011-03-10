@@ -29,19 +29,13 @@ FILE* output_file = NULL;
 FILE* logger = NULL;
 bool timestamps = false;
 struct data_pack** packet_table = NULL;
-struct alpha_queue* rpack_garbage;
-struct alpha_queue* follower_queue;
-pthread_cond_t follower_queue_nonempty = PTHREAD_COND_INITIALIZER;
-struct alpha_queue* display_buffer_queue;
-pthread_cond_t display_buffer_queue_nonempty = PTHREAD_COND_INITIALIZER;
-pthread_cond_t window_nonfull = PTHREAD_COND_INITIALIZER;
-pthread_cond_t window_nonempty = PTHREAD_COND_INITIALIZER;
+struct alpha_queue* fifo_queue;
 
 
 volatile uint64_t last_rec = 0;
 volatile uint64_t trail = 0;
 int loopnum = 0;
-struct recv_pack* receive_ar[BUFFER_SIZE];
+struct media_pack* receive_ar[BUFFER_SIZE];
 
 // Internal node to store peer_info, related eu_sock, and use in linked lists
 struct peer_node
@@ -51,12 +45,11 @@ struct peer_node
   struct peer_node* next;
 };
 
-struct recv_pack
+struct media_pack
 {
-  size_t length;
-  struct data_pack dpack;
+  struct data_pack data;
+  int len;
 };
-
 
 // Wraps peer_info data into a peer_node
 // Attempts to open a eu_socket on that peer
@@ -152,206 +145,103 @@ void drop_downstream_peer(struct peer_node* new_peer)
   return;
 }
 
-struct recv_pack* alloc_rpack(void)
+
+// Listens on upstream eu_socket for incoming UDP data to push to peers
+// Delays playback by a short amount, and has a timeout period for missing packets
+void* dataThread(void* arg)
 {
-  struct recv_pack* rpack = alpha_queue_pop(rpack_garbage);
-  if (NULL == rpack)
+  ssize_t length;
+  char buf[EU_PACKETLEN];
+  while(1)
   {
-    rpack = malloc(sizeof *rpack);
-    if (NULL == rpack)
-      print_error ("out of memory");
-  }
-
-  return rpack;
-}
-
-void free_rpack(struct recv_pack* rpack)
-{
-  if (!alpha_queue_push(rpack_garbage, rpack))
-    print_error ("absurd failure");
-}
-
-void* recvThread(void* arg)
-{
-  for(;;)
-  {
-    struct recv_pack* rpack = alloc_rpack();
     char from_addr[EU_ADDRSTRLEN];
     char from_port[EU_PORTSTRLEN];
 
-    if(NULL == rpack)
-      return NULL;
-
-    // Do a blocking receive
-    if(0 < (rpack->length = eu_recv(upstream_eu_sock, &rpack->dpack,
-                                    EU_PACKETLEN, 0, from_addr, from_port)))
+    // Blocking recv
+    if(upstream_eu_sock && (length = eu_recv(upstream_eu_sock, buf, EU_PACKETLEN,
+                                          0, from_addr, from_port)) > 0)
     {
-      struct recv_pack* rpack_copy = alloc_rpack();
-
-      if(NULL == rpack_copy)
-        return NULL;
-
-      // we're pushing to two queues so we need two copies
-      memcpy(rpack_copy, rpack, sizeof *rpack);
-
-      if(!alpha_queue_push(follower_queue, rpack))
+      // Converts char string buffer to packet struct
+      struct data_pack* packet = (struct data_pack*)malloc(sizeof(struct data_pack));
+      struct media_pack* media = (struct media_pack*)malloc(sizeof(struct media_pack));
+      memcpy(&(media->data), buf, length);
+      media->len = length;
+      push_data_to_peers((char*)(&(media->data)), media->len);
+      uint64_t tempseqnum = media->data.seqnum;
+      uint64_t temp_index = tempseqnum % BUFFER_SIZE;
+      if (last_rec < BUFFER_SIZE || last_rec - BUFFER_SIZE < tempseqnum)
       {
-        print_error("out of memory");
-        return NULL;
-      }
-      // alert follower thread that we've pushed something
-      pthread_cond_broadcast(&follower_queue_nonempty);
-
-      if(!alpha_queue_push(display_buffer_queue, rpack_copy))
-      {
-        print_error("out of memory");
-        return NULL;
-      }
-      // alert display buffer thread that we've pushed something.
-      pthread_cond_broadcast(&display_buffer_queue_nonempty);
-    }
-    else
-    {
-      free_rpack(rpack);
-      print_error ("End of stream?");
-      return NULL;
-    }
-  }
-}
-
-void* followerThread(void* arg)
-{
-  pthread_mutex_t fastmutex = PTHREAD_MUTEX_INITIALIZER;
-
-  for(;;)
-  {
-    struct recv_pack* rpack = alpha_queue_pop(follower_queue);
-    if(NULL == rpack)
-    {
-      // wait for the recv thread to push this queue
-      pthread_mutex_lock(&fastmutex);
-      while(NULL == (rpack = alpha_queue_pop(follower_queue)))
-        pthread_cond_wait(&follower_queue_nonempty, &fastmutex);
-      pthread_mutex_unlock(&fastmutex);
-    }
-
-    if(NULL == rpack)
-    {
-      print_error("pthreads failed me");
-      return NULL;
-    }
-
-    push_data_to_peers((char*) &rpack->dpack, rpack->length);
-
-    free_rpack(rpack);
-  }
-}
-
-void* displayBufferThread(void* arg)
-{
-  pthread_mutex_t fastmutex = PTHREAD_MUTEX_INITIALIZER;
-
-  for(;;)
-  {
-    uint64_t current_seqnum;
-    uint64_t window_index;
-
-    struct recv_pack* rpack = alpha_queue_pop(display_buffer_queue);
-    if(NULL == rpack)
-    {
-      // wait for the recv thread to push this queue
-      pthread_mutex_lock(&fastmutex);
-      while(NULL == (rpack = alpha_queue_pop(display_buffer_queue)))
-        pthread_cond_wait(&display_buffer_queue_nonempty, &fastmutex);
-      pthread_mutex_unlock(&fastmutex);
-    }
-
-    if(NULL == rpack)
-    {
-      print_error("pthreads failed me");
-      return NULL;
-    }
-
-    current_seqnum = rpack->dpack.seqnum;
-    window_index = current_seqnum % BUFFER_SIZE;
-
-    if(0 == trail || 0 == last_rec)
-    {
-      assert(trail == last_rec);
-      trail = last_rec = current_seqnum;
-      print_error ("first packet has seqnum: %lu", current_seqnum);
-    }
-
-    if(last_rec < BUFFER_SIZE || last_rec - BUFFER_SIZE < current_seqnum)
-    {
-      // make sure that the window is empty enough
-      while(trail + BUFFER_SIZE < current_seqnum)
-      {
-        pthread_mutex_lock(&fastmutex);
-        while(trail + BUFFER_SIZE < current_seqnum)
-          pthread_cond_wait(&window_nonfull, &fastmutex);
-        pthread_mutex_unlock(&fastmutex);
-      }
-
-      receive_ar[window_index] = rpack;
-
-      if(last_rec < current_seqnum)
-      {
-        last_rec = current_seqnum;
-
-        // alert display thread that the window is no longer empty
-        pthread_cond_broadcast(&window_nonempty);
+        if (tempseqnum > last_rec)
+          last_rec = tempseqnum;
+        while (trail + BUFFER_SIZE < tempseqnum)
+          assert(sched_yield()==0);
+          receive_ar[temp_index] = media;
       }
       else
       {
-        // otherwise we've received a 'late' packet, any cond-waiter won't care.
+        char temp[EU_ADDRSTRLEN*4];
+        int len = snprintf(temp, EU_ADDRSTRLEN*4, "Didn't put %lu in array\n", temp_index);
+        fwrite(temp, 1, len, logger);
+        free(media);
       }
     }
     else
     {
-      fprintf(logger, "Didn't put %lu in array\n", window_index);
+      print_error("absurd failure");
+      return NULL;
     }
   }
 }
 
-void* displayThread(void* arg)
+void* bufferThread(void* arg)
 {
-  pthread_mutex_t fastmutex = PTHREAD_MUTEX_INITIALIZER;
-
-  for(;;)
+  while(1)
   {
-    struct recv_pack* rpack;
-
-    // wait for this condition to become false
-    while(last_rec <= trail + (BUFFER_SIZE >> 1))
+    if(last_rec > (BUFFER_SIZE >> 1))
     {
-      pthread_mutex_lock(&fastmutex);
-      while(last_rec <= trail + (BUFFER_SIZE >> 1))
-        pthread_cond_wait(&window_nonempty, &fastmutex);
-      pthread_mutex_unlock(&fastmutex);
-
-      // we must loop again just in case the window isnt full 'enough'
+      struct media_pack* media;
+      while (trail + (BUFFER_SIZE >> 1) < last_rec)
+      {
+        media = receive_ar[trail % BUFFER_SIZE];
+        if (media != NULL)
+        {
+          //fwrite(packet->data, 1, packet->seqnum, output_file);
+          //fflush(output_file);
+          alpha_queue_push(fifo_queue, media);
+          receive_ar[trail % BUFFER_SIZE] = NULL;
+          //free(packet);
+        }
+        else
+        {
+          char temp[EU_ADDRSTRLEN*4];
+          int len = snprintf(temp, EU_ADDRSTRLEN*4, "DROPPED SEQUENCE: %lu. LAST RECEIVED: %lu\n", trail, last_rec);
+          fwrite(temp ,1,len, logger);
+          fflush(logger);
+        }
+        trail++;
+      }
+      sched_yield();
     }
+  }
+}
 
-    rpack = receive_ar[trail % BUFFER_SIZE];
-    if(NULL == rpack)
+void* outputThread(void* arg)
+{
+  uint64_t last_pushed = 0;
+  struct media_pack* media;
+  
+  for (;;)
+  {
+    if ((media = alpha_queue_pop(fifo_queue)) != NULL)
     {
-      fprintf(logger, "dropped sequence: %lu, last received: %lu\n", trail, last_rec);
-      fflush(logger);
+      if (last_pushed < media->data.seqnum)
+      {
+        fwrite(media->data.data, 1, media->len, output_file);
+        fflush(output_file);
+        last_pushed = media->data.seqnum;
+      }
+      free(media);
     }
-    else
-    {
-      fwrite(rpack->dpack.data, 1, rpack->length - sizeof rpack->dpack.seqnum, output_file);
-      fflush(output_file);
-
-      receive_ar[trail % BUFFER_SIZE] = NULL;
-      free_rpack(rpack);
-    }
-
-    trail++;
-
-    // alert display buffer thread that the window is no longer full
-    pthread_cond_broadcast(&window_nonfull);
   }
 }
 
@@ -412,7 +302,7 @@ int main(int argc, char* argv[])
   if(argc < 4)
   {
     printf("Usage:\n");
-    printf("eyeunitefollower <lobby token> <listen port> <bandwidth> [output file] [--debug]\n");
+    printf("eyeunitefollower <lobby token> <listen port> <bandwidth> [output file] [--debug]");
     return -1;
   }
   lobby_token = argv[1];
@@ -453,6 +343,7 @@ int main(int argc, char* argv[])
   downstream_peers = NULL;
   num_downstream_peers = 0;
   logger = fopen("log.txt", "ab");
+  fifo_queue = alpha_queue_new();
   
   // Initialize to NULL
   for (last_rec = 0; last_rec < BUFFER_SIZE; last_rec++)
@@ -483,41 +374,30 @@ int main(int argc, char* argv[])
     return 1;
   }
 
-  rpack_garbage = alpha_queue_new ();
-  assert (rpack_garbage);
-  follower_queue = alpha_queue_new ();
-  assert (follower_queue);
-  display_buffer_queue = alpha_queue_new ();
-  assert (display_buffer_queue);
-
-  pthread_t recv_thread;
-  pthread_t follower_thread;
-  pthread_t display_buffer_thread;
-  pthread_t display_thread;
   pthread_t status_thread;
+  pthread_t data_thread;
+  pthread_t buffer_thread;
+  pthread_t output_thread;
 
   // Start status thread
-  pthread_create(&recv_thread, NULL, recvThread, NULL);
-  pthread_create(&follower_thread, NULL, followerThread, NULL);
-  pthread_create(&display_buffer_thread, NULL, displayBufferThread, NULL);
-  pthread_create(&display_thread, NULL, displayThread, NULL);
   pthread_create(&status_thread, NULL, statusThread, NULL);
+  pthread_create(&data_thread, NULL, dataThread, NULL);
+  pthread_create(&buffer_thread, NULL, bufferThread, NULL);
+  pthread_create(&output_thread, NULL, outputThread, NULL);
 
 
   // Clean up at termination
-  pthread_join(recv_thread, NULL);
-  pthread_join(follower_thread, NULL);
-  pthread_join(display_buffer_thread, NULL);
-  pthread_join(display_thread, NULL);
   pthread_join(status_thread, NULL);
+  pthread_join(data_thread, NULL);
+  pthread_join(buffer_thread, NULL);
+  pthread_join(output_thread, NULL);
 
   // Close sockets and free memory
-  alpha_queue_free(display_buffer_queue);
-  alpha_queue_free(follower_queue);
   bootstrap_cleanup(b);
   bootstrap_global_cleanup();
   fn_closesocket(source_zmq_sock);
   close_all_peer_sockets();
+  alpha_queue_free(fifo_queue);
   if(output_file != stdout)
     fclose(output_file);
 

@@ -12,7 +12,7 @@
 #define BUFFER_SIZE 128
 
 #define FILELOC "log.txt"
-#define APP_ENGINE "http://eyeunite.appspot.com"
+#define APP_ENGINE "http://localhost:8080"
 
 struct peer_info
 {
