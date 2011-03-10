@@ -5,11 +5,11 @@
 
 #define EU_TOKENSTRLEN 7
 #define EU_PORTSTRLEN 7
-#define EU_PACKETLEN 511
+#define EU_PACKETLEN (188 + sizeof(uint64_t))
 #define EU_ADDRSTRLEN INET_ADDRSTRLEN
 #define EU_HOSTURLLEN (3+1+2+EU_ADDRSTRLEN+1+EU_PORTSTRLEN)
 #define MAX_DELAY 100
-#define BUFFER_SIZE 128
+#define BUFFER_SIZE 64
 
 #define FILELOC "log.txt"
 #define APP_ENGINE "http://eyeunite.appspot.com"
