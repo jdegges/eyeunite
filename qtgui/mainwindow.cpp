@@ -7,6 +7,8 @@ MainWindow::MainWindow(QWidget *parent) :
     ui(new Ui::MainWindow)
 {
     ui->setupUi(this);
+    ui->label->hide();
+    ui->addr->hide();
 
     exec_name = "./eyeunitesource";
 
@@ -79,12 +81,16 @@ void MainWindow::setExec_Follower()
 {
     exec_name = "./eyeunitefollower";
     ui->label->setText("Lobby Token");
+    ui->label->show();
+    ui->addr->show();
 }
 
 void MainWindow::setExec_Source()
 {
     exec_name = "./eyeunitesource";
     ui->label->setText("IP Address");
+    ui->label->hide();
+    ui->addr->hide();
 }
 
 void MainWindow::spawnProcess()
