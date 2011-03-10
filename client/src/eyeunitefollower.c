@@ -229,9 +229,7 @@ void* dataThread(void* arg)
       }
       else
       {
-        char temp[EU_ADDRSTRLEN*4];
-        int len = snprintf(temp, EU_ADDRSTRLEN*4, "Didn't put %lu in array\n", temp_index);
-        fwrite(temp, 1, len, logger);
+        fprintf(logger, "Didn't put %lu in array\n", temp_index);
         free_mpack(media);
       }
     }
@@ -260,10 +258,7 @@ void* bufferThread(void* arg)
         }
         else
         {
-          char temp[EU_ADDRSTRLEN*4];
-          int len = snprintf(temp, EU_ADDRSTRLEN*4, "DROPPED SEQUENCE: %lu. LAST RECEIVED: %lu\n", trail, last_rec);
-          fwrite(temp ,1,len, logger);
-          fflush(logger);
+          fprintf(logger, "dropped sequence: %lu, last received: %lu\n", trail, last_rec);
         }
         trail++;
       }
