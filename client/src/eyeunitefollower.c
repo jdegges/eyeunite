@@ -132,6 +132,13 @@ void drop_downstream_peer(struct peer_node* new_peer)
   else
   {
     struct peer_node* currNode = downstream_peers;
+    if(currNode->peer_info.pid == new_peer->peer_info.pid)
+    {
+      downstream_peers = currNode->next;
+      eu_close(currNode->eu_sock);
+      free(currNode);
+      return;
+    }
     while(currNode->next != NULL)
     {
       if(currNode->next->peer_info.pid == new_peer->peer_info.pid)
