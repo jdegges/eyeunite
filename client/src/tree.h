@@ -12,7 +12,7 @@ struct tree_t;
  * Returns a pointer to the tree or NULL if out of memory.
  */
 struct tree_t* 
-initialize(void* socket, int streambw, int peerbw, char pid[], char addr[], char port[], int debug_mode);
+initialize(void* socket, int streambw, int peerbw, char pid[], char port[], int debug_mode);
 
 
 /*

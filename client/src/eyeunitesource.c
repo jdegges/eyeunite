@@ -167,9 +167,9 @@ static void* data_thread(void *vptr) {
 
 int main(int argc, char* argv[]) {
 
-  if (argc != 5) {
+  if (argc != 4) {
     printf ("Usage:\n");
-    printf ("./eyeunitesource <ipaddress> <listenport> <bandwidth> <media file>\n");
+    printf ("./eyeunitesource <listenport> <bandwidth> <media file>\n");
     return;
   }
 
@@ -177,12 +177,10 @@ int main(int argc, char* argv[]) {
   // Substitute bootsrap in here later
   char pid[EU_TOKENSTRLEN];
   char lt[EU_TOKENSTRLEN];
-  char ipadd[EU_ADDRSTRLEN];
   char port[EU_PORTSTRLEN];
-  memcpy (ipadd, argv[1], EU_ADDRSTRLEN);
-  memcpy (port, argv[2], EU_PORTSTRLEN);
-  int bw = atoi (argv[3]);
-  media_file = argv[4]; // global
+  memcpy (port, argv[1], EU_PORTSTRLEN);
+  int bw = atoi (argv[2]);
+  media_file = argv[3]; // global
   
   struct bootstrap* btstr = bootstrap_init (APP_ENGINE, port, pid, NULL);
   if (bootstrap_lobby_create (btstr, lt)) {
@@ -193,7 +191,7 @@ int main(int argc, char* argv[]) {
   void* sock = sn_initzmq (endpoint, pid);
 
   // Create tree -- needs bootstrap
-  struct tree_t* tree = initialize (sock, 5, bw, pid, ipadd, port, 0);
+  struct tree_t* tree = initialize (sock, 5, bw, pid, port, 0);
 
   printTree (tree);
 

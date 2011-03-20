@@ -374,7 +374,7 @@ int main(int argc, char* argv[])
   if(argc < 4)
   {
     printf("Usage:\n");
-    printf("eyeunitefollower <lobby token> <listen port> <bandwidth> [output file] [--debug]");
+    printf("eyeunitefollower <lobby token> <listen port> <bandwidth> [output file] [--debug]\n");
     return -1;
   }
   lobby_token = argv[1];

@@ -21,7 +21,7 @@ int main (void){
 
 //Simple add test
 void addTestSimple(){
-  struct tree_t* simpleadd = initialize(NULL, 1, 2, "addP", "ip:root", "p:root", 0);
+  struct tree_t* simpleadd = initialize(NULL, 1, 2, "addP", "p:root", 0);
   
 	addPeer (simpleadd, 2, "add:1", "ip:1", "port:1");
 	addPeer (simpleadd, 2, "add:2", "ip:2", "port:2");
@@ -34,7 +34,7 @@ void addTestSimple(){
 
 //Tests that new peer switches up correctly
 void addTestSwitch(){
-  struct tree_t* switchup = initialize(NULL, 1, 2, "addup", "ip:root", "p:root", 0);
+  struct tree_t* switchup = initialize(NULL, 1, 2, "addup", "p:root", 0);
   
 	addPeer (switchup, 2, "add:1", "ip:1", "port:1");
 	addPeer (switchup, 1, "add:2", "ip:2", "port:2");
@@ -48,7 +48,7 @@ void addTestSwitch(){
 
 //Tests that new peer takes spot of leaf
 void addTestLeaf(){
-  struct tree_t *leaf = initialize(NULL, 1, 2, "nospot", "ip", "port", 0);
+  struct tree_t *leaf = initialize(NULL, 1, 2, "nospot", "port", 0);
 
   addPeer (leaf, 0, "add:1", "ip", "port");
   addPeer (leaf, 0, "add:2", "ip", "port");
@@ -60,7 +60,7 @@ void addTestLeaf(){
 
 //Tests that new peer takes spot of leaf and switches up
 void addTestSwitchandLeaf(){
-  struct tree_t *switchleaf = initialize(NULL, 1, 2, "switch", "ip", "port", 0);
+  struct tree_t *switchleaf = initialize(NULL, 1, 2, "switch", "port", 0);
 
   addPeer (switchleaf, 2, "add:1", "ip", "port");
   addPeer (switchleaf, 1, "add:2", "ip", "port");
@@ -75,7 +75,7 @@ void addTestSwitchandLeaf(){
 
 //Tests that addPeer returns true when a new leaf tries to join with no spots
 void addTestNoSpots(){
-  struct tree_t *nospots = initialize(NULL, 1, 2, "nospot", "ip", "port", 0);
+  struct tree_t *nospots = initialize(NULL, 1, 2, "nospot", "port", 0);
 
   addPeer (nospots, 0, "add:1", "ip", "port");
   addPeer (nospots, 0, "add:2", "ip", "port");

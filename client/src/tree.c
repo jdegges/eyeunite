@@ -55,7 +55,7 @@ static struct node_t *nodealloc(void)
   return temp;
 }
 
-struct tree_t *initialize(void* socket, int streambw, int peerbw, char pid[], char addr[], char port[], int debug_mode)
+struct tree_t *initialize(void* socket, int streambw, int peerbw, char pid[], char port[], int debug_mode)
 {
   struct tree_t *tree;
 
@@ -75,7 +75,6 @@ struct tree_t *initialize(void* socket, int streambw, int peerbw, char pid[], ch
   tree->root->p_info.peerbw = peerbw;
   tree->root->max_c = peerbw / streambw;
   strcpy(tree->root->p_info.pid, pid);
-  strcpy(tree->root->p_info.addr, addr);
   strcpy(tree->root->p_info.port, port);
 
   return tree;
