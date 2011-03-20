@@ -6,7 +6,7 @@
 sudo apt-get install libcurl3 libcurl3-gnutls libcurl4-openssl-dev libxml2-dev uuid-dev build-essential autoconf automake libtool make gcc
 
 # install packages to run the Qt GUI
-sudo apt-get install qt4-dev-tools libqt4-gui g++
+#sudo apt-get install qt4-dev-tools libqt4-gui g++
 
 # install zeromq
 wget http://download.zeromq.org/zeromq-2.1.2.tar.gz

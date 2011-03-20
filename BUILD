@@ -8,6 +8,6 @@ make
 cd ..
 
 # compile the Qt GUI
-cd qtgui
-make
-cd ..
+#cd qtgui
+#make
+#cd ..
