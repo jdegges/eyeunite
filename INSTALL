@@ -1,0 +1,26 @@
+# The first step is to clone this git repository:
+#   git clone git://github.com/jdegges/eyeunite.git
+#   cd eyeunite
+
+# install necessary packages from aptitude
+sudo apt-get install libcurl3 libcurl3-gnutls libcurl4-openssl-dev libxml2-dev uuid-dev build-essential autoconf automake libtool make gcc
+
+# install packages to run the Qt GUI
+sudo apt-get install qt4-dev-tools libqt4-gui g++
+
+# install zeromq
+wget http://download.zeromq.org/zeromq-2.1.2.tar.gz
+tar xzf zeromq-2.1.2.tar.gz
+cd zeromq-2.1.2
+./configure
+make
+sudo make install
+cd ..
+rm -rf zeromq-2.1.2 zeromq-2.1.2.tar.gz
+
+# checkout code
+git checkout -t origin/FinalFollower
+git pull
+
+# download sample video to stream
+wget http://www.cpsc.gov/vnr/arctcat.mpg

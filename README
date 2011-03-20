@@ -1,0 +1,20 @@
+* Eyeunite *
+
+First follow the instructions in the documents in this order:
+
+1. INSTALL - install dependencies and download a sample movie clip
+2. BUILD - compile the eyeunite sources and GUI
+3. RUN_ARCTCAT - create a source/follower that streams a pre-recorded movie
+
+The last two scenarios require that your computer is connected to the internet,
+is assigned a public IP, and is not behind any sort of firewall.
+
+To run your own tests you will need to understand how to interface and start up
+the source and follower node software. The binary in 'client/src/eyeunitesource'
+takes parameters that describe which port the source node will listen on and
+what media file to stream. The binary in 'client/src/eyeunitefollower' takes
+parameters that describe the lobby token (printed when the source node is
+started), port to accept UDP packets on, and where to write the received data.
+
+You can run these two binaries without any arguments for a minimal help
+print out. See RUN_ARCTCAT for an example of how to run these two programs.

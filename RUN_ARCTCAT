@@ -1,0 +1,77 @@
+# How to stream a pre-recorded video through the network
+
+# Run the source node
+./client/src/eyeunitesource 1965 5 arctcat.mpg &
+
+# Output:
+# [1300592164 bootstrap.c:321 in bootstrap_init] pid:  6bad7b
+# [1300592164 bootstrap.c:322 in bootstrap_init] addr: 127.0.0.1
+# [1300592164 bootstrap.c:323 in bootstrap_init] port: 1965
+# [1300592164 bootstrap.c:435 in bootstrap_lobby_create] lid:  30edab
+# [1300592164 bootstrap.c:436 in bootstrap_lobby_create] pid:  6bad7b
+# [1300592164 bootstrap.c:437 in bootstrap_lobby_create] addr: 127.0.0.1
+# [1300592164 bootstrap.c:438 in bootstrap_lobby_create] port: 1965
+#
+#
+# Node PID: 6bad7b
+# Node # of children: 0
+# Node max children: 1
+
+
+# Run a client node in another window with the lobby token (lid) from source/
+# You will need to replace the first argument with the LID you get from the
+# source
+./client/src/eyeunitefollower 9db38d 1966 5 output.mpg
+
+# At this point you will see more output on both the source and follower end:
+# Source output
+# [1300592185 eyeunitesource.c:47 in control_thread] Request join from c6c7bf
+#
+#
+#
+# Node PID: 6bad7b
+# Node # of children: 1
+# Node max children: 1
+# Node Child: c6c7bf
+#
+#
+# Node PID: c6c7bf
+# Node # of children: 0
+# Node max children: 1
+# Node Parent: 6bad7b
+#
+#
+# [1300592187 eyeunitesource.c:110 in data_thread] end of file..?
+
+# Follower output
+# [1300592185 bootstrap.c:321 in bootstrap_init] pid:  c6c7bf
+# [1300592185 bootstrap.c:322 in bootstrap_init] addr: 127.0.0.1
+# [1300592185 bootstrap.c:323 in bootstrap_init] port: 1966
+# [1300592185 bootstrap.c:532 in bootstrap_lobby_join] lid:  30edab
+# [1300592185 bootstrap.c:533 in bootstrap_lobby_join] pid:  c6c7bf
+# [1300592185 bootstrap.c:534 in bootstrap_lobby_join] addr: 127.0.0.1
+# [1300592185 bootstrap.c:535 in bootstrap_lobby_join] port: 1966
+# [1300592185 bootstrap.c:626 in bootstrap_lobby_get_source] lid:  30edab
+# [1300592185 bootstrap.c:627 in bootstrap_lobby_get_source] pid:  c6c7bf
+# [1300592185 bootstrap.c:628 in bootstrap_lobby_get_source] addr: 127.0.0.1
+# [1300592185 bootstrap.c:629 in bootstrap_lobby_get_source] port: 1966
+# [1300592185 eyeunitefollower.c:435 in main] source pid: 6bad7b
+# [1300592185 eyeunitefollower.c:436 in main] source ip: 127.0.0.1:1965
+# [1300592185 eyeunitefollower.c:329 in statusThread] Received Message: 
+# [1300592185 eyeunitefollower.c:352 in statusThread] FOLLOW_NODE
+#
+# [1300592185 eyeunitefollower.c:353 in statusThread] Changing upstream peer 6bad7b
+
+
+# Since this software assumes media will be streamed continuously, the buffers
+# will never all be completely flushed. This will result in the last few bytes
+# of the file not being written out. In the case of streaming, this is not an
+# issue since there will always be more data passing through. When the end of
+# file is reached on the source side, you can use CTRL-C to exit both programs.
+
+# Start up your favorite movie player to watch the result (you don't need to
+# wait for EOF)
+vlc output.mpg
+
+# To achieve live streaming you can simply make output.mpg a FIFO file and hook
+# a movie player to the receiving end. See 'man mkfifo' for more details.
