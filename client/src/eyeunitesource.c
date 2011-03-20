@@ -158,7 +158,7 @@ static void* data_thread(void *vptr) {
       
       alpha_queue_push (socks, sock);
       
-      //usleep(200);
+      usleep(200);
     }
 
     dpack.seqnum++;
