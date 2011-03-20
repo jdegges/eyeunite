@@ -18,9 +18,5 @@ sudo make install
 cd ..
 rm -rf zeromq-2.1.2 zeromq-2.1.2.tar.gz
 
-# checkout code
-git checkout -t origin/FinalFollower
-git pull
-
 # download sample video to stream
 wget http://www.cpsc.gov/vnr/arctcat.mpg
